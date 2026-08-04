@@ -1,4 +1,8 @@
 --!strict
+-- Rojo-owned script. Source of truth: src/server/BaseService.server.luau
+-- Mapped via default.project.json -> ServerScriptService.Server (src/server)
+-- Do not edit this script directly in Studio; change the file and sync with Rojo.
+-- rojo-sync-marker: ownership-confirmed
 
 --[[
 	Assigns each player a free base and moves them to PlayerSpawn.

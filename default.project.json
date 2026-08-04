@@ -12,9 +12,6 @@
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"
-      },
-      "BaseService": {
-        "$path": "src/BaseService.server.luau"
       }
     },
 
