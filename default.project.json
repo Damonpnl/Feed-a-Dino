@@ -13,9 +13,6 @@
       "Server": {
         "$path": "src/server"
       },
-      "ConveyorService": {
-        "$path": "src/ConveyorService.server.luau"
-      },
       "BaseService": {
         "$path": "src/BaseService.server.luau"
       }
