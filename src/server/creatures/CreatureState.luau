@@ -24,6 +24,14 @@ export type CreatureState = {
 	totalFeedsConsumed: number,
 }
 
+export type LineageHistoryEntry = {
+	stage: number,
+	formId: string,
+	routeAffinity: CreatureTypes.AffinityId?,
+	specializedInfluence: CreatureTypes.InfluenceId?,
+	rarityAtStage: CreatureTypes.RarityId?,
+}
+
 export type CreatureSnapshot = {
 	creatureId: string,
 	ownerUserId: number,
@@ -38,6 +46,10 @@ export type CreatureSnapshot = {
 	heritageAffinities: CreatureTypes.AffinityTotals,
 	stageInfluences: CreatureTypes.InfluenceTotals,
 	heritageInfluences: CreatureTypes.InfluenceTotals,
+	stageEvolutionQuality: number,
+	qualityPromotionBonus: number,
+	basePromotionChance: number,
+	adjustedPromotionChance: number,
 	totalFeedsConsumed: number,
 	growthProgress: number,
 	requiredGrowth: number,
@@ -53,6 +65,7 @@ export type CreatureSnapshot = {
 	influenceStrengthLabel: CreatureTypes.InfluenceStrengthLabel,
 	-- Stage 0 family / Stage 1+ next form, exposed in legacy prediction fields for tests.
 	predictedEvolution: CreatureTypes.JuvenileEvolutionResult,
+	lineageHistory: { LineageHistoryEntry },
 }
 
 type PrivateState = {
@@ -60,12 +73,28 @@ type PrivateState = {
 	heritageAffinities: CreatureTypes.AffinityTotals,
 	stageInfluences: CreatureTypes.InfluenceTotals,
 	heritageInfluences: CreatureTypes.InfluenceTotals,
+	stageEvolutionQuality: number,
 	rarity: CreatureTypes.RarityId,
 	growthProgress: number,
 	evolutionReady: boolean,
 	evolutionState: CreatureTypes.EvolutionStateId,
 	bonusFeedRemaining: number,
+	lineageHistory: { LineageHistoryEntry },
 }
+
+local function copyLineageHistory(history: { LineageHistoryEntry }): { LineageHistoryEntry }
+	local result: { LineageHistoryEntry } = {}
+	for _, entry in history do
+		table.insert(result, {
+			stage = entry.stage,
+			formId = entry.formId,
+			routeAffinity = entry.routeAffinity,
+			specializedInfluence = entry.specializedInfluence,
+			rarityAtStage = entry.rarityAtStage,
+		})
+	end
+	return result
+end
 
 local privateByState: { [CreatureState]: PrivateState } = setmetatable({}, { __mode = "k" }) :: any
 
@@ -92,6 +121,7 @@ local function buildPrediction(state: CreatureState, privateState: PrivateState)
 		heritageAffinities = privateState.heritageAffinities,
 		stageInfluences = privateState.stageInfluences,
 		heritageInfluences = privateState.heritageInfluences,
+		stageEvolutionQuality = privateState.stageEvolutionQuality,
 		growthProgress = privateState.growthProgress,
 		roll = nil,
 	})
@@ -140,11 +170,21 @@ function CreatureState.createProtoRex(creatureId: string, ownerUserId: number): 
 		heritageAffinities = CreatureTypes.createEmptyAffinities(),
 		stageInfluences = CreatureTypes.createEmptyInfluences(),
 		heritageInfluences = CreatureTypes.createEmptyInfluences(),
+		stageEvolutionQuality = 0,
 		rarity = "Common",
 		growthProgress = 0,
 		evolutionReady = false,
 		evolutionState = "Growing",
 		bonusFeedRemaining = 0,
+		lineageHistory = {
+			{
+				stage = 0,
+				formId = "ProtoRex",
+				routeAffinity = nil,
+				specializedInfluence = nil,
+				rarityAtStage = "Common",
+			},
+		},
 	}
 	return state
 end
@@ -171,6 +211,10 @@ end
 
 function CreatureState.getHeritageInfluences(state: CreatureState): CreatureTypes.InfluenceTotals
 	return copyInfluences(getPrivate(state).heritageInfluences)
+end
+
+function CreatureState.getStageEvolutionQuality(state: CreatureState): number
+	return getPrivate(state).stageEvolutionQuality
 end
 
 function CreatureState.getRarity(state: CreatureState): CreatureTypes.RarityId
@@ -226,6 +270,10 @@ function CreatureState.getSnapshot(state: CreatureState): CreatureSnapshot
 		heritageAffinities = heritageAffinities,
 		stageInfluences = stageInfluences,
 		heritageInfluences = heritageInfluences,
+		stageEvolutionQuality = privateState.stageEvolutionQuality,
+		qualityPromotionBonus = prediction.qualityPromotionBonus,
+		basePromotionChance = prediction.basePromotionChance,
+		adjustedPromotionChance = prediction.adjustedPromotionChance,
 		totalFeedsConsumed = state.totalFeedsConsumed,
 		growthProgress = privateState.growthProgress,
 		requiredGrowth = requiredGrowth,
@@ -246,7 +294,23 @@ function CreatureState.getSnapshot(state: CreatureState): CreatureSnapshot
 			familyLineageId = prediction.predictedNextFormId,
 			familyLabel = prediction.familyLabel,
 		},
+		lineageHistory = copyLineageHistory(privateState.lineageHistory),
 	}
+end
+
+function CreatureState.getLineageHistory(state: CreatureState): { LineageHistoryEntry }
+	return copyLineageHistory(getPrivate(state).lineageHistory)
+end
+
+function CreatureState.appendLineageHistory(state: CreatureState, entry: LineageHistoryEntry): ()
+	local privateState = getPrivate(state)
+	table.insert(privateState.lineageHistory, {
+		stage = entry.stage,
+		formId = entry.formId,
+		routeAffinity = entry.routeAffinity,
+		specializedInfluence = entry.specializedInfluence,
+		rarityAtStage = entry.rarityAtStage,
+	})
 end
 
 function CreatureState.applyAffinityContribution(
@@ -268,6 +332,17 @@ function CreatureState.applyInfluenceContribution(
 	influences.Arthropod += contribution.Arthropod
 	influences.Fungal += contribution.Fungal
 	influences.Volcanic += contribution.Volcanic
+end
+
+function CreatureState.applyEvolutionQuality(state: CreatureState, qualityAmount: number): ()
+	if typeof(qualityAmount) ~= "number" or qualityAmount ~= qualityAmount or qualityAmount <= 0 then
+		return
+	end
+	local privateState = getPrivate(state)
+	privateState.stageEvolutionQuality += qualityAmount
+	if privateState.stageEvolutionQuality < 0 then
+		privateState.stageEvolutionQuality = 0
+	end
 end
 
 function CreatureState.applyGrowth(state: CreatureState, growthAmount: number): ()
@@ -312,10 +387,19 @@ function CreatureState.applyEvolution(
 	nextStage: number,
 	rarity: CreatureTypes.RarityId,
 	heritageTransfer: CreatureTypes.AffinityTotals,
-	heritageInfluenceTransfer: CreatureTypes.InfluenceTotals?
+	heritageInfluenceTransfer: CreatureTypes.InfluenceTotals?,
+	routeAffinity: CreatureTypes.AffinityId?,
+	specializedInfluence: CreatureTypes.InfluenceId?
 ): ()
 	local privateState = getPrivate(state)
 	assert(privateState.evolutionState == "Resolving", "Evolution apply requires Resolving state")
+
+	local effective = EvolutionCalculator.computeEffectiveAffinities(
+		privateState.stageAffinities,
+		privateState.heritageAffinities
+	)
+	local derivedRoute = routeAffinity or EvolutionCalculator.getDominantAffinity(effective)
+	local derivedSpecialization = specializedInfluence
 
 	local heritage = privateState.heritageAffinities
 	heritage.Flesh += heritageTransfer.Flesh
@@ -334,10 +418,19 @@ function CreatureState.applyEvolution(
 	privateState.rarity = rarity
 	privateState.stageAffinities = CreatureTypes.createEmptyAffinities()
 	privateState.stageInfluences = CreatureTypes.createEmptyInfluences()
+	privateState.stageEvolutionQuality = 0
 	privateState.growthProgress = 0
 	privateState.evolutionReady = false
 	privateState.bonusFeedRemaining = 0
 	privateState.evolutionState = "Growing"
+
+	table.insert(privateState.lineageHistory, {
+		stage = nextStage,
+		formId = nextFormId,
+		routeAffinity = derivedRoute,
+		specializedInfluence = derivedSpecialization,
+		rarityAtStage = rarity,
+	})
 end
 
 function CreatureState.applyJuvenileEvolution(
@@ -354,7 +447,12 @@ function CreatureState.applyJuvenileEvolution(
 
 	local transfer = EvolutionCalculator.computeHeritageTransfer(privateState.stageAffinities)
 	local influenceTransfer = EvolutionCalculator.computeHeritageInfluenceTransfer(privateState.stageInfluences)
-	CreatureState.applyEvolution(state, lineageId, 1, rarity, transfer, influenceTransfer)
+	local effective = EvolutionCalculator.computeEffectiveAffinities(
+		privateState.stageAffinities,
+		privateState.heritageAffinities
+	)
+	local dominant = EvolutionCalculator.getDominantAffinity(effective)
+	CreatureState.applyEvolution(state, lineageId, 1, rarity, transfer, influenceTransfer, dominant, nil)
 end
 
 return CreatureState

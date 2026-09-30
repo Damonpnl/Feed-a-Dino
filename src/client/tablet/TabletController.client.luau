@@ -75,12 +75,11 @@ local function bindTool(tool: Tool)
 
 	table.insert(connections, tool.Equipped:Connect(function()
 		isEquipped = true
-		TabletUIController.setEquipHint(true)
+		TabletUIController.open()
 	end))
 
 	table.insert(connections, tool.Unequipped:Connect(function()
 		isEquipped = false
-		TabletUIController.setEquipHint(false)
 		TabletUIController.close()
 	end))
 
@@ -88,6 +87,7 @@ local function bindTool(tool: Tool)
 		if not isEquipped then
 			return
 		end
+		-- Optional toggle while equipped (CLOSE button / Escape also work).
 		TabletUIController.toggle()
 	end))
 
@@ -97,14 +97,13 @@ local function bindTool(tool: Tool)
 			isEquipped = false
 			disconnectAll()
 			TabletUIController.close()
-			TabletUIController.setEquipHint(false)
 		end
 	end))
 
 	-- If already equipped when rebound.
 	if tool.Parent == player.Character then
 		isEquipped = true
-		TabletUIController.setEquipHint(not TabletUIController.isOpen())
+		TabletUIController.open()
 	end
 end
 
@@ -126,7 +125,6 @@ end
 local function onCharacterAdded(character: Model)
 	isEquipped = false
 	TabletUIController.close()
-	TabletUIController.setEquipHint(false)
 	disconnectAll()
 	boundTool = nil
 	watchContainer(character)
@@ -193,5 +191,23 @@ task.defer(function()
 		openInv:FireServer()
 	end
 end)
+
+local creatureRemotes = ReplicatedStorage:WaitForChild("TabletCreatureRemotes", 30)
+if creatureRemotes and creatureRemotes:IsA("Folder") then
+	local updated = creatureRemotes:WaitForChild("CreatureSnapshotUpdated", 10)
+	if updated and updated:IsA("RemoteEvent") then
+		updated.OnClientEvent:Connect(function(snapshot)
+			TabletUIController.updateCreatureSnapshot(snapshot)
+		end)
+	end
+	local request = creatureRemotes:FindFirstChild("RequestCreatureSnapshot")
+	if request and request:IsA("RemoteEvent") then
+		task.defer(function()
+			request:FireServer()
+		end)
+	end
+else
+	warn("[TabletController] TabletCreatureRemotes not found")
+end
 
 print("[TabletController] Research Tablet controller ready")

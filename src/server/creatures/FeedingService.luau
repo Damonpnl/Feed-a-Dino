@@ -29,6 +29,10 @@ export type FeedResult = {
 	heritageAffinities: CreatureTypes.AffinityTotals?,
 	stageInfluences: CreatureTypes.InfluenceTotals?,
 	heritageInfluences: CreatureTypes.InfluenceTotals?,
+	stageEvolutionQuality: number?,
+	qualityPromotionBonus: number?,
+	basePromotionChance: number?,
+	adjustedPromotionChance: number?,
 	totalFeedsConsumed: number?,
 	growthProgress: number?,
 	requiredGrowth: number?,
@@ -102,6 +106,10 @@ local function snapshotFeedFields(snapshot: CreatureState.CreatureSnapshot): Fee
 		heritageAffinities = snapshot.heritageAffinities,
 		stageInfluences = snapshot.stageInfluences,
 		heritageInfluences = snapshot.heritageInfluences,
+		stageEvolutionQuality = snapshot.stageEvolutionQuality,
+		qualityPromotionBonus = snapshot.qualityPromotionBonus,
+		basePromotionChance = snapshot.basePromotionChance,
+		adjustedPromotionChance = snapshot.adjustedPromotionChance,
 		totalFeedsConsumed = snapshot.totalFeedsConsumed,
 		growthProgress = snapshot.growthProgress,
 		requiredGrowth = snapshot.requiredGrowth,
@@ -143,6 +151,9 @@ function FeedingService.applyFeed(state: CreatureState.CreatureState, feedId: st
 	CreatureState.applyAffinityContribution(state, feed.affinityContribution)
 	if feed.influenceContribution ~= nil then
 		CreatureState.applyInfluenceContribution(state, feed.influenceContribution)
+	end
+	if feed.evolutionQuality > 0 then
+		CreatureState.applyEvolutionQuality(state, feed.evolutionQuality)
 	end
 	CreatureState.applyGrowth(state, feed.growth)
 	CreatureState.incrementFeedsConsumed(state)
@@ -194,8 +205,9 @@ function FeedingService.confirmEvolution(
 		}
 	end
 
+	-- Stage 0 and Stage 1 both roll rarity with injected/server RNG.
 	local roll: number? = nil
-	if state.stage == 0 then
+	if state.stage == 0 or state.stage == 1 then
 		roll = if optionalRoll ~= nil then optionalRoll else createServerRoll()
 	end
 
@@ -207,6 +219,7 @@ function FeedingService.confirmEvolution(
 		heritageAffinities = before.heritageAffinities,
 		stageInfluences = before.stageInfluences,
 		heritageInfluences = before.heritageInfluences,
+		stageEvolutionQuality = before.stageEvolutionQuality,
 		growthProgress = before.growthProgress,
 		roll = roll,
 	})
@@ -241,7 +254,9 @@ function FeedingService.confirmEvolution(
 			resolved.nextStage :: number,
 			resolved.rarity :: CreatureTypes.RarityId,
 			resolved.heritageTransfer :: CreatureTypes.AffinityTotals,
-			resolved.heritageInfluenceTransfer :: CreatureTypes.InfluenceTotals
+			resolved.heritageInfluenceTransfer :: CreatureTypes.InfluenceTotals,
+			resolved.dominantEffectiveAffinity,
+			resolved.qualifyingInfluenceId
 		)
 	end)
 

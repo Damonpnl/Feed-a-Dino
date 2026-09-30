@@ -19,7 +19,19 @@ local EvolutionCalculator = require(Creatures:WaitForChild("EvolutionCalculator"
 local CreatureState = require(script.Parent.CreatureState)
 local FeedingService = require(script.Parent.FeedingService)
 local CreatureVisualService = require(script.Parent.CreatureVisualService)
+local CreatureNameTagService = require(script.Parent.CreatureNameTagService)
 local PlayerBaseSessions = require(script.Parent.PlayerBaseSessions)
+local ConveyorPurchaseService = require(script.Parent.Parent.economy.ConveyorPurchaseService)
+local TabletCreatureSnapshotService = require(script.Parent.Parent.tablet:WaitForChild("TabletCreatureSnapshotService"))
+
+local function notifyTabletLineage(player: Player)
+	local ok, err = pcall(function()
+		TabletCreatureSnapshotService.pushForPlayer(player)
+	end)
+	if not ok then
+		warn("[PrototypeFeedingHarness] Tablet lineage push failed: " .. tostring(err))
+	end
+end
 
 local CREATURE_SPAWN_NAME = "CreatureSpawn"
 local PLAYER_SPAWN_NAME = "PlayerSpawn"
@@ -51,8 +63,7 @@ type PlayerBaseSession = {
 	creature: CreatureState.CreatureState,
 	feedPrompt: ProximityPrompt,
 	evolvePrompt: ProximityPrompt,
-	statusLabel: TextLabel,
-	revealToken: number,
+	nameTagHost: BasePart,
 	connections: { RBXScriptConnection },
 }
 
@@ -192,44 +203,16 @@ local function ensureEvolvePrompt(host: BasePart): ProximityPrompt
 	return prompt
 end
 
-local function ensureStatusBillboard(host: BasePart): TextLabel
-	local existing = host:FindFirstChild(STATUS_BILLBOARD_NAME)
-	if existing ~= nil and existing:IsA("BillboardGui") then
-		local label = existing:FindFirstChild("StatusLabel")
-		if label ~= nil and label:IsA("TextLabel") then
-			return label
-		end
-		existing:Destroy()
+local function removeLegacyStatusBillboard(host: BasePart)
+	local legacy = host:FindFirstChild(STATUS_BILLBOARD_NAME)
+	if legacy ~= nil then
+		legacy:Destroy()
 	end
+end
 
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = STATUS_BILLBOARD_NAME
-	billboard.Size = UDim2.fromOffset(300, 140)
-	billboard.StudsOffset = Vector3.new(0, 18, 0)
-	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 120
-	billboard.Parent = host
-
-	local label = Instance.new("TextLabel")
-	label.Name = "StatusLabel"
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 0.35
-	label.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-	label.TextColor3 = Color3.fromRGB(240, 240, 240)
-	label.TextScaled = true
-	label.Font = Enum.Font.GothamMedium
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.TextYAlignment = Enum.TextYAlignment.Top
-	label.Parent = billboard
-
-	local padding = Instance.new("UIPadding")
-	padding.PaddingLeft = UDim.new(0, 8)
-	padding.PaddingRight = UDim.new(0, 8)
-	padding.PaddingTop = UDim.new(0, 6)
-	padding.PaddingBottom = UDim.new(0, 6)
-	padding.Parent = label
-
-	return label
+local function updateNameTag(session: PlayerBaseSession, formId: string)
+	removeLegacyStatusBillboard(session.nameTagHost)
+	CreatureNameTagService.update(session.nameTagHost, formId)
 end
 
 local function configureFeedPrompt(feedPrompt: ProximityPrompt, baseName: string): ()
@@ -376,62 +359,20 @@ local function validateCarriedFeedItem(player: Player): FeedItemValidationResult
 		return { ok = false, reason = "UnapprovedOrigin", item = item, feedId = feedIdValue }
 	end
 
-	return { ok = true, reason = nil, item = item, feedId = feedIdValue }
-end
-
-local function formatBillboardText(
-	snapshot: CreatureState.CreatureSnapshot,
-	rarityText: string
-): string
-	local predictedForm = snapshot.predictedNextFormId or "Unknown"
-	local dominant = snapshot.dominantEffectiveAffinity or "Unknown"
-	local stageA = snapshot.stageAffinities
-	local heritageA = snapshot.heritageAffinities
-
-	local predictedBase = snapshot.predictedBaseFormId or "Unknown"
-	local predictedFinal = snapshot.predictedFinalFormId or predictedForm
-	local influenceId = snapshot.strongestInfluenceId or "None"
-	local influenceShare = snapshot.strongestInfluenceShare
-
-	return string.format(
-		"Form: %s\nStage: %d\nRarity: %s\nGrowth: %d / %d\nStage F/Fl/M: %d/%d/%d\nHeritage F/Fl/M: %.1f/%.1f/%.1f\nInfluence: %s %d (%.0f%%) %s\nDominant: %s\nBase: %s\nPredicted: %s\nReady: %s",
-		snapshot.formId,
-		snapshot.stage,
-		rarityText,
-		snapshot.growthProgress,
-		snapshot.requiredGrowth,
-		stageA.Flesh,
-		stageA.Flora,
-		stageA.Mineral,
-		heritageA.Flesh,
-		heritageA.Flora,
-		heritageA.Mineral,
-		tostring(influenceId),
-		snapshot.strongestInfluenceScore,
-		influenceShare * 100,
-		snapshot.influenceStrengthLabel,
-		tostring(dominant),
-		predictedBase,
-		predictedFinal,
-		tostring(snapshot.evolutionReady)
-	)
-end
-
-local function updateStatusBillboard(session: PlayerBaseSession, snapshot: CreatureState.CreatureSnapshot): ()
-	session.statusLabel.Text = formatBillboardText(snapshot, snapshot.rarity)
-end
-
-local function revealEvolutionOnBillboard(session: PlayerBaseSession, snapshot: CreatureState.CreatureSnapshot): ()
-	session.revealToken += 1
-	local token = session.revealToken
-
-	session.statusLabel.Text = formatBillboardText(snapshot, "…")
-	task.delay(0.75, function()
-		if token ~= session.revealToken then
-			return
+	-- Purchased conveyor materials are owner-only.
+	local isPurchased = item:GetAttribute("IsPurchased")
+	if isPurchased == true then
+		local ownerUserId = item:GetAttribute("OwnerUserId")
+		local player = Players:GetPlayerFromCharacter(character)
+		if player == nil or ownerUserId ~= player.UserId then
+			return { ok = false, reason = "NotOwnedByPlayer", item = item, feedId = feedIdValue }
 		end
-		session.statusLabel.Text = formatBillboardText(snapshot, snapshot.rarity)
-	end)
+	elseif isPurchased == false then
+		-- Unpurchased public listings cannot be fed.
+		return { ok = false, reason = "UnapprovedOrigin", item = item, feedId = feedIdValue }
+	end
+
+	return { ok = true, reason = nil, item = item, feedId = feedIdValue }
 end
 
 local function refreshCreatureVisual(session: PlayerBaseSession, snapshot: CreatureState.CreatureSnapshot): boolean
@@ -484,6 +425,10 @@ local function updateDevPresentation(session: PlayerBaseSession, snapshot: Creat
 	spawn:SetAttribute("StrongestInfluenceScore", snapshot.strongestInfluenceScore)
 	spawn:SetAttribute("StrongestInfluenceShare", snapshot.strongestInfluenceShare)
 	spawn:SetAttribute("InfluenceStrengthLabel", snapshot.influenceStrengthLabel)
+	spawn:SetAttribute("StageEvolutionQuality", snapshot.stageEvolutionQuality)
+	spawn:SetAttribute("QualityPromotionBonus", snapshot.qualityPromotionBonus)
+	spawn:SetAttribute("BasePromotionChance", snapshot.basePromotionChance)
+	spawn:SetAttribute("AdjustedPromotionChance", snapshot.adjustedPromotionChance)
 	spawn:SetAttribute("DominantEffectiveAffinity", snapshot.dominantEffectiveAffinity or "")
 	spawn:SetAttribute("EvolutionReady", snapshot.evolutionReady)
 	spawn:SetAttribute("EvolutionState", snapshot.evolutionState)
@@ -496,7 +441,7 @@ local function updateDevPresentation(session: PlayerBaseSession, snapshot: Creat
 		session.evolvePrompt.ActionText = "Evolve"
 	end
 
-	updateStatusBillboard(session, snapshot)
+	updateNameTag(session, snapshot.formId)
 end
 
 local function destroySession(player: Player): ()
@@ -515,7 +460,7 @@ local function destroySession(player: Player): ()
 	end
 
 	session.evolvePrompt.Enabled = false
-	session.statusLabel.Text = "Unassigned"
+	CreatureNameTagService.clear(session.nameTagHost)
 
 	print(string.format(
 		"[PrototypeFeedingHarness] Released session for %s on %s",
@@ -532,6 +477,7 @@ local function resetCreature(session: PlayerBaseSession, reason: string): ()
 	local snapshot = CreatureState.getSnapshot(session.creature)
 	refreshCreatureVisual(session, snapshot)
 	updateDevPresentation(session, snapshot)
+	notifyTabletLineage(session.player)
 	print(string.format(
 		"[PrototypeFeedingHarness] Reset creature on %s (%s)",
 		session.base.Name,
@@ -572,7 +518,7 @@ local function bindSession(player: Player, base: Model): ()
 	configureFeedPrompt(feedPrompt, base.Name)
 	-- Evolve/feed prompts stay on FeedingPoint so they remain reachable at the pad.
 	local evolvePrompt = ensureEvolvePrompt(markers.feedingPointPart)
-	local statusLabel = ensureStatusBillboard(markers.creatureSpawn)
+	removeLegacyStatusBillboard(markers.creatureSpawn)
 
 	local creature = CreatureState.createProtoRex(
 		string.format("creature-%s-%d", base.Name, player.UserId),
@@ -586,8 +532,7 @@ local function bindSession(player: Player, base: Model): ()
 		creature = creature,
 		feedPrompt = feedPrompt,
 		evolvePrompt = evolvePrompt,
-		statusLabel = statusLabel,
-		revealToken = 0,
+		nameTagHost = markers.creatureSpawn,
 		connections = {},
 	}
 
@@ -596,6 +541,7 @@ local function bindSession(player: Player, base: Model): ()
 	local snapshot = CreatureState.getSnapshot(creature)
 	refreshCreatureVisual(session, snapshot)
 	updateDevPresentation(session, snapshot)
+	notifyTabletLineage(player)
 
 	table.insert(session.connections, feedPrompt.Triggered:Connect(function(triggeringPlayer: Player)
 		if triggeringPlayer ~= session.player then
@@ -654,10 +600,14 @@ local function bindSession(player: Player, base: Model): ()
 			character:SetAttribute("CarryingItem", nil)
 		end
 
+		if item:IsA("BasePart") then
+			ConveyorPurchaseService.markConsumed(item)
+		end
 		item:Destroy()
 
 		local feedSnapshot = CreatureState.getSnapshot(session.creature)
 		updateDevPresentation(session, feedSnapshot)
+		notifyTabletLineage(session.player)
 
 		local predicted = result.predictedEvolution
 		assert(predicted ~= nil, "Expected predictedEvolution on successful feed")
@@ -705,9 +655,9 @@ local function bindSession(player: Player, base: Model): ()
 
 		refreshCreatureVisual(session, evolveSnapshot)
 		updateDevPresentation(session, evolveSnapshot)
+		notifyTabletLineage(session.player)
 		session.evolvePrompt.Enabled = false
 		session.evolvePrompt.ActionText = "Evolve"
-		revealEvolutionOnBillboard(session, evolveSnapshot)
 
 		print(string.format(
 			"[PrototypeFeedingHarness] %s Evolved form=%s rarity=%s stage=%s affinity=%s roll=%s promoted=%s",

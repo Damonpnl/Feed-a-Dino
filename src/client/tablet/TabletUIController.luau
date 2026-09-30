@@ -15,6 +15,7 @@ local FeedPresentationDefinitions = require(Shared:WaitForChild("creatures"):Wai
 
 local TabletAppRegistry = require(script.Parent:WaitForChild("TabletAppRegistry"))
 local InventoryAppController = require(script.Parent:WaitForChild("apps"):WaitForChild("InventoryAppController"))
+local LineageAppController = require(script.Parent:WaitForChild("apps"):WaitForChild("LineageAppController"))
 local PlaceholderAppController = require(script.Parent:WaitForChild("apps"):WaitForChild("PlaceholderAppController"))
 
 local TabletUIController = {}
@@ -31,7 +32,6 @@ local tabletFrame: Frame
 local walletLabel: TextLabel
 local zoneLabel: TextLabel
 local toastLabel: TextLabel
-local hintLabel: TextLabel
 local navButtons: { [AppId]: TextButton } = {}
 local pages: { [AppId]: Frame } = {}
 
@@ -100,6 +100,9 @@ local function showPage(appId: AppId)
 		page.Visible = id == appId
 	end
 	updateNavStyles()
+	if appId == "Lineage" then
+		LineageAppController.onShown()
+	end
 end
 
 local function tweenOpen(opening: boolean)
@@ -315,6 +318,8 @@ function TabletUIController.mount(folder: Folder)
 				requestSell = requestSell,
 				showToast = showToast,
 			})
+		elseif definition.appId == "Lineage" then
+			pages.Lineage = LineageAppController.mount(content)
 		else
 			pages[definition.appId] = PlaceholderAppController.mount(content, definition.appId)
 		end
@@ -338,23 +343,6 @@ function TabletUIController.mount(folder: Folder)
 	toastCorner.CornerRadius = UDim.new(0, 8)
 	toastCorner.Parent = toastLabel
 
-	hintLabel = Instance.new("TextLabel")
-	hintLabel.Name = "EquipHint"
-	hintLabel.AnchorPoint = Vector2.new(0.5, 1)
-	hintLabel.Position = UDim2.new(0.5, 0, 1, -24)
-	hintLabel.Size = UDim2.fromOffset(220, 28)
-	hintLabel.BackgroundColor3 = Color3.fromRGB(10, 16, 20)
-	hintLabel.BackgroundTransparency = 0.25
-	hintLabel.Font = Enum.Font.Gotham
-	hintLabel.TextSize = 14
-	hintLabel.TextColor3 = Color3.fromRGB(180, 210, 215)
-	hintLabel.Text = "Click to open PDA"
-	hintLabel.Visible = false
-	hintLabel.Parent = gui
-	local hintCorner = Instance.new("UICorner")
-	hintCorner.CornerRadius = UDim.new(0, 8)
-	hintCorner.Parent = hintLabel
-
 	showPage("Inventory")
 	walletLabel.Text = formatCoins(walletBalance)
 end
@@ -371,12 +359,6 @@ function TabletUIController.isSellMode(): boolean
 	return sellMode
 end
 
-function TabletUIController.setEquipHint(visible: boolean)
-	if hintLabel then
-		hintLabel.Visible = visible and not isOpen
-	end
-end
-
 function TabletUIController.open(appId: AppId?)
 	if gui == nil then
 		return
@@ -390,7 +372,6 @@ function TabletUIController.open(appId: AppId?)
 		isOpen = true
 		tweenOpen(true)
 	end
-	TabletUIController.setEquipHint(false)
 end
 
 function TabletUIController.close()
@@ -471,6 +452,10 @@ function TabletUIController.showSaleFeedback(payload: any)
 	else
 		showToast(title, body)
 	end
+end
+
+function TabletUIController.updateCreatureSnapshot(snapshot: any)
+	LineageAppController.applySnapshot(snapshot)
 end
 
 return TabletUIController

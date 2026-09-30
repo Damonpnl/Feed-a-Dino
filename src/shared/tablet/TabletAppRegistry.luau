@@ -22,9 +22,7 @@ local apps: { [AppId]: AppDefinition } = {
 		appId = "Lineage" :: AppId,
 		displayName = "Lineage",
 		order = 2,
-		enabled = false,
-		placeholderTitle = "LINEAGE DATABASE",
-		placeholderBody = "Creature ancestry and evolution records will appear here.",
+		enabled = true,
 	}),
 	Expedition = table.freeze({
 		appId = "Expedition" :: AppId,

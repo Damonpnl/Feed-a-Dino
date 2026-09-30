@@ -20,6 +20,7 @@ local FeedDefinitions = require(Creatures:WaitForChild("FeedDefinitions"))
 local LineageDefinitions = require(Creatures:WaitForChild("LineageDefinitions"))
 local StageConfig = require(Creatures:WaitForChild("StageConfig"))
 local Stage2Routes = require(Creatures:WaitForChild("Stage2Routes"))
+local ConveyorSpawnWeights = require(Creatures:WaitForChild("ConveyorSpawnWeights"))
 local CreatureTypes = require(Creatures:WaitForChild("CreatureTypes"))
 
 local CreatureState = require(script.Parent.CreatureState)
@@ -59,11 +60,10 @@ local function feedToReadyFlesh(state: CreatureState.CreatureState): ()
 end
 
 local function feedToReadyFlora(state: CreatureState.CreatureState): ()
-	for _ = 1, 3 do
+	-- Use basic LeafBundle only so Stage 0 tests do not accumulate premium quality.
+	for _ = 1, 5 do
 		assert(FeedingService.applyFeed(state, "LeafBundle").success)
 	end
-	assert(FeedingService.applyFeed(state, "AncientFruit").success)
-	assert(FeedingService.applyFeed(state, "AncientFruit").success)
 end
 
 local function feedToReadyMineral(state: CreatureState.CreatureState): ()
@@ -307,7 +307,9 @@ local function stage1ResolveInput(
 	affinity: CreatureTypes.AffinityId,
 	rarity: CreatureTypes.RarityId,
 	growthProgress: number,
-	stageInfluences: CreatureTypes.InfluenceTotals?
+	stageInfluences: CreatureTypes.InfluenceTotals?,
+	stageEvolutionQuality: number?,
+	roll: number?
 )
 	return {
 		formId = formId,
@@ -317,7 +319,10 @@ local function stage1ResolveInput(
 		heritageAffinities = emptyAffinities(),
 		stageInfluences = stageInfluences or emptyInfluences(),
 		heritageInfluences = emptyInfluences(),
+		stageEvolutionQuality = stageEvolutionQuality or 0,
 		growthProgress = growthProgress,
+		-- Default COMMON_ROLL keeps Common→Uncommon promotion false at quality 0.
+		roll = if roll ~= nil then roll else COMMON_ROLL,
 	}
 end
 
@@ -381,6 +386,7 @@ local unsupported = EvolutionCalculator.resolveEvolution({
 	heritageAffinities = emptyAffinities(),
 	stageInfluences = emptyInfluences(),
 	heritageInfluences = emptyInfluences(),
+	stageEvolutionQuality = 0,
 	growthProgress = 100,
 })
 assert(unsupported.eligible == false, "Stage 2 evolution must be unsupported")
@@ -409,7 +415,7 @@ assert(predictedArmor.dominantEffectiveAffinity == "Mineral", "Dominant effectiv
 
 local stageBeforeArmor = predictedArmor.stageAffinities
 local heritageBeforeArmor = predictedArmor.heritageAffinities
-local confirmArmor = FeedingService.confirmEvolution(fangToArmor)
+local confirmArmor = FeedingService.confirmEvolution(fangToArmor, COMMON_ROLL)
 assert(confirmArmor.success == true, "Stage 2 confirmEvolution must succeed")
 assert(confirmArmor.formId == "ArmoredTRex", "Fangling+Mineral must become ArmoredTRex")
 assert(confirmArmor.lineageId == "ArmoredTRex")
@@ -444,18 +450,18 @@ local bloodToArmor = CreatureState.createProtoRex("test-blood-armor", 21)
 feedToReadyFlesh(bloodToArmor)
 assert(FeedingService.confirmJuvenileEvolution(bloodToArmor, UNCOMMON_ROLL).success)
 feedToStage2Ready(bloodToArmor, "CrystalChunk", 6)
-local bloodArmorConfirm = FeedingService.confirmEvolution(bloodToArmor)
+local bloodArmorConfirm = FeedingService.confirmEvolution(bloodToArmor, COMMON_ROLL)
 assert(bloodArmorConfirm.success and bloodArmorConfirm.formId == "ArmoredTRex")
 assert(bloodArmorConfirm.rarity == "Uncommon", "Uncommon Bloodfang must stay Uncommon at Stage 2")
 assert(bloodArmorConfirm.stage == 2)
 
--- Mossback Flora -> Ent via service.
+-- Mossback Flora -> Ent via service (basic LeafBundle avoids quality-driven promotion).
 local mossToEnt = CreatureState.createProtoRex("test-moss-ent", 22)
 feedToReadyFlora(mossToEnt)
 assert(FeedingService.confirmJuvenileEvolution(mossToEnt, COMMON_ROLL).lineageId == "Mossback")
-feedToStage2Ready(mossToEnt, "AncientFruit", 6)
+feedToStage2Ready(mossToEnt, "LeafBundle", 10)
 assert(CreatureState.getSnapshot(mossToEnt).predictedNextFormId == "Ent")
-local entConfirm = FeedingService.confirmEvolution(mossToEnt)
+local entConfirm = FeedingService.confirmEvolution(mossToEnt, COMMON_ROLL)
 assert(entConfirm.success and entConfirm.formId == "Ent" and entConfirm.rarity == "Common")
 
 -- Failed evolution must not mutate state (unsupported Stage 2).
@@ -626,7 +632,7 @@ assert(beforeMantis.evolutionReady == true)
 assert(beforeMantis.predictedBaseFormId == "Raptor")
 assert(beforeMantis.predictedFinalFormId == "MantisRaptor")
 assert(beforeMantis.stageInfluences.Arthropod == 120)
-local confirmMantis = FeedingService.confirmEvolution(mantisService)
+local confirmMantis = FeedingService.confirmEvolution(mantisService, COMMON_ROLL)
 assert(confirmMantis.success == true)
 assert(confirmMantis.formId == "MantisRaptor")
 assert(confirmMantis.baseFormId == "Raptor")
@@ -658,6 +664,219 @@ for _, lineageId in { "MantisRaptor", "MushroomEnt", "MagmaGolem" } do
 	local def = LineageDefinitions.get(lineageId)
 	assert(def ~= nil and def.stage == 2, "Missing Stage 2 variant definition: " .. lineageId)
 end
+
+---------------------------------------------------------------------------
+-- Premium feeds + evolution quality
+---------------------------------------------------------------------------
+
+local function approxEqual(actual: number, expected: number, epsilon: number): boolean
+	return math.abs(actual - expected) <= epsilon
+end
+
+assert(StageConfig.MAX_QUALITY_PROMOTION_BONUS == 0.20)
+assert(StageConfig.QUALITY_BONUS_SCALE == 40)
+assert(StageConfig.BASE_PROMOTION_CHANCE == 0.30)
+
+local primeDef = FeedDefinitions.get("PrimeMeat")
+assert(primeDef ~= nil)
+assert(primeDef.affinityContribution.Flesh == 18 and primeDef.growth == 16)
+assert(primeDef.evolutionQuality == 5)
+assert(primeDef.influenceContribution == nil)
+
+local ancientDef = FeedDefinitions.get("AncientFruit")
+assert(ancientDef ~= nil)
+assert(ancientDef.affinityContribution.Flora == 18 and ancientDef.growth == 16)
+assert(ancientDef.evolutionQuality == 5)
+assert(ancientDef.influenceContribution == nil)
+
+local livingDef = FeedDefinitions.get("LivingCrystal")
+assert(livingDef ~= nil)
+assert(livingDef.affinityContribution.Mineral == 18 and livingDef.growth == 16)
+assert(livingDef.evolutionQuality == 5)
+assert(livingDef.influenceContribution == nil)
+
+-- Basic / specialized feeds contribute zero evolution quality.
+for _, feedId in { "RawMeat", "LeafBundle", "CrystalChunk", "BoneFragments", "InsectCluster", "FungalCore", "ObsidianShard" } do
+	local def = FeedDefinitions.get(feedId)
+	assert(def ~= nil and def.evolutionQuality == 0, feedId .. " must have evolutionQuality 0")
+end
+
+assert(approxEqual(EvolutionCalculator.computeQualityPromotionBonus(0), 0, 1e-9))
+assert(approxEqual(EvolutionCalculator.computeQualityPromotionBonus(10), 0.04, 1e-6))
+assert(approxEqual(EvolutionCalculator.computeQualityPromotionBonus(20), 0.20 * 20 / 60, 1e-6))
+assert(approxEqual(EvolutionCalculator.computeQualityPromotionBonus(40), 0.10, 1e-6))
+assert(approxEqual(EvolutionCalculator.computeQualityPromotionBonus(80), 0.20 * 80 / 120, 1e-6))
+assert(EvolutionCalculator.computeQualityPromotionBonus(1e9) <= 0.20)
+assert(EvolutionCalculator.computeAdjustedPromotionChance(0.95, 0.20) == 1)
+
+-- One / four premium feeds accumulate quality.
+local qualityState = CreatureState.createProtoRex("test-quality", 40)
+assert(FeedingService.applyFeed(qualityState, "PrimeMeat").success)
+local q1 = CreatureState.getSnapshot(qualityState)
+assert(q1.stageAffinities.Flesh == 18 and q1.growthProgress == 16)
+assert(q1.stageEvolutionQuality == 5)
+assert(q1.stageInfluences.Arthropod == 0)
+for _ = 1, 3 do
+	assert(FeedingService.applyFeed(qualityState, "PrimeMeat").success)
+end
+assert(CreatureState.getSnapshot(qualityState).stageEvolutionQuality == 20)
+
+-- Failed / rejected feeds leave quality unchanged.
+local beforeBadQ = CreatureState.getSnapshot(qualityState).stageEvolutionQuality
+assert(FeedingService.applyFeed(qualityState, "NotARealFeed").success == false)
+assert(CreatureState.getSnapshot(qualityState).stageEvolutionQuality == beforeBadQ)
+
+-- Finish Stage 0 ready and evolve; quality resets.
+-- Use a high roll so quality-boosted promotion odds do not change the form under test.
+while not CreatureState.isEvolutionReady(qualityState) do
+	assert(FeedingService.applyFeed(qualityState, "PrimeMeat").success)
+end
+local readyQuality = CreatureState.getSnapshot(qualityState).stageEvolutionQuality
+assert(readyQuality > 0)
+local stage0Confirm = FeedingService.confirmJuvenileEvolution(qualityState, 0.99)
+assert(stage0Confirm.success)
+assert(CreatureState.getSnapshot(qualityState).stageEvolutionQuality == 0, "Quality must reset after Stage 0 evolution")
+assert(CreatureState.getSnapshot(qualityState).formId == "Fangling")
+
+-- Quality does not change affinity route or specialized variant.
+local routeKeepCommon = EvolutionCalculator.resolveEvolution(stage1ResolveInput(
+	"Fangling",
+	"Flesh",
+	"Common",
+	100,
+	{ Arthropod = 36, Fungal = 0, Volcanic = 0 },
+	80,
+	0.50
+))
+assert(routeKeepCommon.baseFormId == "Raptor")
+assert(routeKeepCommon.nextFormId == "MantisRaptor")
+assert(routeKeepCommon.rarity == "Common")
+assert(routeKeepCommon.promoted == false)
+
+-- Identical injected RNG between low and high quality thresholds.
+local midRoll = 0.33 -- between 0.30 and ~0.3667 (quality 20)
+local lowQ = EvolutionCalculator.resolveEvolution(stage1ResolveInput(
+	"Fangling", "Flesh", "Common", 100, nil, 0, midRoll
+))
+assert(lowQ.rarity == "Common" and lowQ.promoted == false, "Low quality must fail midRoll")
+local highQ = EvolutionCalculator.resolveEvolution(stage1ResolveInput(
+	"Fangling", "Flesh", "Common", 100, nil, 20, midRoll
+))
+assert(highQ.rarity == "Uncommon" and highQ.promoted == true, "Quality 20 must promote on midRoll")
+print("[CreatureSystemTest] Quality promotion threshold ok midRoll=0.33")
+
+-- Stage 2 quality reset after successful specialized evolution with premium feeds.
+local premiumMantis = CreatureState.createProtoRex("test-premium-mantis", 41)
+feedToReadyFlesh(premiumMantis)
+assert(FeedingService.confirmJuvenileEvolution(premiumMantis, COMMON_ROLL).success)
+for _ = 1, 3 do
+	assert(FeedingService.applyFeed(premiumMantis, "InsectCluster").success)
+end
+for _ = 1, 5 do
+	assert(FeedingService.applyFeed(premiumMantis, "PrimeMeat").success)
+end
+local beforePremMantis = CreatureState.getSnapshot(premiumMantis)
+assert(beforePremMantis.evolutionReady == true)
+assert(beforePremMantis.predictedFinalFormId == "MantisRaptor")
+assert(beforePremMantis.stageEvolutionQuality == 25)
+assert(beforePremMantis.stageInfluences.Arthropod == 36)
+local premConfirm = FeedingService.confirmEvolution(premiumMantis, COMMON_ROLL)
+assert(premConfirm.success and premConfirm.formId == "MantisRaptor")
+assert(CreatureState.getSnapshot(premiumMantis).stageEvolutionQuality == 0, "Quality resets after Stage 2")
+print("[CreatureSystemTest] Premium+Arthropod -> MantisRaptor quality reset ok")
+
+local premiumMush = CreatureState.createProtoRex("test-premium-mush", 42)
+feedToReadyFlora(premiumMush)
+assert(FeedingService.confirmJuvenileEvolution(premiumMush, COMMON_ROLL).success)
+for _ = 1, 3 do
+	assert(FeedingService.applyFeed(premiumMush, "FungalCore").success)
+end
+for _ = 1, 5 do
+	assert(FeedingService.applyFeed(premiumMush, "AncientFruit").success)
+end
+assert(CreatureState.getSnapshot(premiumMush).predictedFinalFormId == "MushroomEnt")
+assert(FeedingService.confirmEvolution(premiumMush, COMMON_ROLL).formId == "MushroomEnt")
+assert(CreatureState.getSnapshot(premiumMush).stageEvolutionQuality == 0)
+print("[CreatureSystemTest] Premium+Fungal -> MushroomEnt ok")
+
+local premiumMagma = CreatureState.createProtoRex("test-premium-magma", 43)
+feedToReadyMineral(premiumMagma)
+assert(FeedingService.confirmJuvenileEvolution(premiumMagma, COMMON_ROLL).success)
+for _ = 1, 3 do
+	assert(FeedingService.applyFeed(premiumMagma, "ObsidianShard").success)
+end
+for _ = 1, 5 do
+	assert(FeedingService.applyFeed(premiumMagma, "LivingCrystal").success)
+end
+assert(CreatureState.getSnapshot(premiumMagma).predictedFinalFormId == "MagmaGolem")
+assert(FeedingService.confirmEvolution(premiumMagma, COMMON_ROLL).formId == "MagmaGolem")
+assert(CreatureState.getSnapshot(premiumMagma).stageEvolutionQuality == 0)
+print("[CreatureSystemTest] Premium+Volcanic -> MagmaGolem ok")
+
+-- Failed evolution leaves quality unchanged.
+local failQ2 = CreatureState.createProtoRex("test-fail-q2", 45)
+feedToReadyFlesh(failQ2)
+assert(FeedingService.confirmJuvenileEvolution(failQ2, COMMON_ROLL).success)
+assert(FeedingService.applyFeed(failQ2, "PrimeMeat").success)
+local qBeforeFail = CreatureState.getSnapshot(failQ2).stageEvolutionQuality
+local notReadyConfirm = FeedingService.confirmEvolution(failQ2, COMMON_ROLL)
+assert(notReadyConfirm.success == false)
+assert(CreatureState.getSnapshot(failQ2).stageEvolutionQuality == qBeforeFail, "Failed evolution must not clear quality")
+
+---------------------------------------------------------------------------
+-- Conveyor spawn weight pool (pure selector)
+---------------------------------------------------------------------------
+
+local pool = ConveyorSpawnWeights.getProductionPool()
+assert(ConveyorSpawnWeights.validatePool(pool) == true)
+assert(ConveyorSpawnWeights.getTotalWeight(pool) == 99, "Production total weight must be 99")
+local cats = ConveyorSpawnWeights.getCategoryWeights(pool)
+assert(cats.basic == 72 and cats.premium == 18 and cats.specialized == 9)
+assert(cats.other == 0)
+
+local ids = ConveyorSpawnWeights.getFeedIds(pool)
+assert(#ids == 9)
+local expectedIds = {
+	RawMeat = true,
+	LeafBundle = true,
+	CrystalChunk = true,
+	PrimeMeat = true,
+	AncientFruit = true,
+	LivingCrystal = true,
+	InsectCluster = true,
+	FungalCore = true,
+	ObsidianShard = true,
+}
+for _, id in ids do
+	assert(expectedIds[id] == true, "Unexpected feed in pool: " .. id)
+end
+
+-- Boundary rolls: [0,24)=RawMeat, [24,48)=LeafBundle, [48,72)=CrystalChunk,
+-- [72,78)=PrimeMeat, [78,84)=AncientFruit, [84,90)=LivingCrystal,
+-- [90,93)=InsectCluster, [93,96)=FungalCore, [96,99)=ObsidianShard
+assert(ConveyorSpawnWeights.selectByRoll(pool, 0) == "RawMeat")
+assert(ConveyorSpawnWeights.selectByRoll(pool, 23.999) == "RawMeat")
+assert(ConveyorSpawnWeights.selectByRoll(pool, 24) == "LeafBundle")
+assert(ConveyorSpawnWeights.selectByRoll(pool, 72) == "PrimeMeat")
+assert(ConveyorSpawnWeights.selectByRoll(pool, 78) == "AncientFruit")
+assert(ConveyorSpawnWeights.selectByRoll(pool, 84) == "LivingCrystal")
+assert(ConveyorSpawnWeights.selectByRoll(pool, 90) == "InsectCluster")
+assert(ConveyorSpawnWeights.selectByRoll(pool, 93) == "FungalCore")
+assert(ConveyorSpawnWeights.selectByRoll(pool, 96) == "ObsidianShard")
+assert(ConveyorSpawnWeights.selectByRoll(pool, 98.999) == "ObsidianShard")
+assert(ConveyorSpawnWeights.selectByRoll(pool, 99) == nil, "Roll at total must be rejected")
+assert(ConveyorSpawnWeights.selectByRoll(pool, -0.1) == nil)
+
+local badPool = { { feedId = "RawMeat", weight = 0 } }
+assert(select(1, ConveyorSpawnWeights.validatePool(badPool)) == false)
+local negPool = { { feedId = "RawMeat", weight = -1 } }
+assert(select(1, ConveyorSpawnWeights.validatePool(negPool)) == false)
+local dupPool = {
+	{ feedId = "RawMeat", weight = 1 },
+	{ feedId = "RawMeat", weight = 1 },
+}
+assert(select(1, ConveyorSpawnWeights.validatePool(dupPool)) == false)
+print("[CreatureSystemTest] Conveyor weight pool boundaries ok")
 
 ---------------------------------------------------------------------------
 -- Creature visual spawning (isolated temp base — never pollutes live player bases)
@@ -738,13 +957,13 @@ end
 
 local stage2VisualCases = {
 	{ parentFeed = feedToReadyFlesh, parentRoll = COMMON_ROLL, stage2Feed = "RawMeat", stage2Count = 10, formId = "Raptor" },
-	{ parentFeed = feedToReadyFlesh, parentRoll = COMMON_ROLL, stage2Feed = "AncientFruit", stage2Count = 6, formId = "VenomRaptor" },
+	{ parentFeed = feedToReadyFlesh, parentRoll = COMMON_ROLL, stage2Feed = "AncientFruit", stage2Count = 7, formId = "VenomRaptor" },
 	{ parentFeed = feedToReadyFlesh, parentRoll = COMMON_ROLL, stage2Feed = "CrystalChunk", stage2Count = 6, formId = "ArmoredTRex" },
 	{ parentFeed = feedToReadyFlora, parentRoll = COMMON_ROLL, stage2Feed = "RawMeat", stage2Count = 10, formId = "CarnivorousPlant" },
-	{ parentFeed = feedToReadyFlora, parentRoll = COMMON_ROLL, stage2Feed = "AncientFruit", stage2Count = 6, formId = "Ent" },
+	{ parentFeed = feedToReadyFlora, parentRoll = COMMON_ROLL, stage2Feed = "AncientFruit", stage2Count = 7, formId = "Ent" },
 	{ parentFeed = feedToReadyFlora, parentRoll = COMMON_ROLL, stage2Feed = "CrystalChunk", stage2Count = 6, formId = "ForestGolem" },
 	{ parentFeed = feedToReadyMineral, parentRoll = COMMON_ROLL, stage2Feed = "RawMeat", stage2Count = 10, formId = "Ankylosaur" },
-	{ parentFeed = feedToReadyMineral, parentRoll = COMMON_ROLL, stage2Feed = "AncientFruit", stage2Count = 6, formId = "MossGolem" },
+	{ parentFeed = feedToReadyMineral, parentRoll = COMMON_ROLL, stage2Feed = "AncientFruit", stage2Count = 7, formId = "MossGolem" },
 	{ parentFeed = feedToReadyMineral, parentRoll = COMMON_ROLL, stage2Feed = "CrystalChunk", stage2Count = 6, formId = "CrystalGolem" },
 	{ parentFeed = feedToReadyFlesh, parentRoll = COMMON_ROLL, stage2Feed = "InsectCluster", stage2Count = 10, formId = "MantisRaptor" },
 	{ parentFeed = feedToReadyFlora, parentRoll = COMMON_ROLL, stage2Feed = "FungalCore", stage2Count = 10, formId = "MushroomEnt" },
@@ -756,7 +975,7 @@ for _, case in stage2VisualCases do
 	case.parentFeed(state)
 	assert(FeedingService.confirmJuvenileEvolution(state, case.parentRoll).success)
 	feedToStage2Ready(state, case.stage2Feed, case.stage2Count)
-	local confirm = FeedingService.confirmEvolution(state)
+	local confirm = FeedingService.confirmEvolution(state, COMMON_ROLL)
 	assert(confirm.success == true, "Stage 2 confirm must succeed for " .. case.formId)
 	assert(confirm.formId == case.formId, "Expected Stage 2 form " .. case.formId)
 	local snapshot = CreatureState.getSnapshot(state)

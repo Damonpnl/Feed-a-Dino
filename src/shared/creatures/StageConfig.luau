@@ -36,6 +36,11 @@ StageConfig.HERITAGE_INFLUENCE_TRANSFER_FRACTION = 0.20
 -- Specialized influence qualification thresholds.
 StageConfig.INFLUENCE_QUALIFY_SCORE = 36
 StageConfig.INFLUENCE_QUALIFY_SHARE = 0.60
+-- Evolution quality → rarity promotion bonus (diminishing returns).
+StageConfig.MAX_QUALITY_PROMOTION_BONUS = 0.20
+StageConfig.QUALITY_BONUS_SCALE = 40
+-- Base Common → Uncommon promotion chance before quality bonus.
+StageConfig.BASE_PROMOTION_CHANCE = 0.30
 
 function StageConfig.get(stage: number): StageEvolutionConfig?
 	return configs[stage]

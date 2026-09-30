@@ -5,10 +5,12 @@
 	No Roblox services. No math.random. Deterministic when roll is injected.
 
 	Effective affinity = stageAffinity + heritageAffinity * 0.25
-	Stage 0 -> 1: affinity family + rarity roll (roll < 0.30 promotes).
+	Stage 0 -> 1: affinity family + rarity roll (roll < adjustedPromotionChance).
 	Stage 1 -> 2: parent form + dominant effective affinity via Stage2Routes,
-	then optional specialized variant from qualifying stage influence.
-	Rarity never decreases. Stage 2 preserves current rarity (no new roll).
+	then optional specialized variant from qualifying stage influence,
+	then rarity promotion roll using the same adjusted chance.
+	Evolution quality only modifies rarity-promotion odds.
+	Rarity never decreases. MVP promotion target is Uncommon only.
 ]]
 
 local CreatureTypes = require(script.Parent.CreatureTypes)
@@ -50,6 +52,7 @@ export type EvolutionInput = {
 	heritageAffinities: CreatureTypes.AffinityTotals,
 	stageInfluences: CreatureTypes.InfluenceTotals,
 	heritageInfluences: CreatureTypes.InfluenceTotals,
+	stageEvolutionQuality: number,
 	growthProgress: number,
 	roll: number?,
 }
@@ -78,7 +81,7 @@ local function emptyInfluenceAssessment(): InfluenceAssessment
 	}
 end
 
-local function withInfluenceFields(
+local function withPredictionFields(
 	prediction: {
 		eligible: boolean,
 		reason: CreatureTypes.EvolutionIneligibilityReason?,
@@ -88,8 +91,12 @@ local function withInfluenceFields(
 		predictedFinalFormId: CreatureTypes.FormId?,
 		familyLabel: string?,
 	},
-	assessment: InfluenceAssessment
+	assessment: InfluenceAssessment,
+	stageEvolutionQuality: number
 ): CreatureTypes.EvolutionPrediction
+	local baseChance = StageConfig.BASE_PROMOTION_CHANCE
+	local bonus = EvolutionCalculator.computeQualityPromotionBonus(stageEvolutionQuality)
+	local adjusted = EvolutionCalculator.computeAdjustedPromotionChance(baseChance, bonus)
 	return {
 		eligible = prediction.eligible,
 		reason = prediction.reason,
@@ -103,7 +110,59 @@ local function withInfluenceFields(
 		strongestInfluenceShare = assessment.strongestInfluenceShare,
 		influenceStrengthLabel = assessment.influenceStrengthLabel,
 		qualifyingInfluenceId = assessment.qualifyingInfluenceId,
+		stageEvolutionQuality = stageEvolutionQuality,
+		qualityPromotionBonus = bonus,
+		basePromotionChance = baseChance,
+		adjustedPromotionChance = adjusted,
 	}
+end
+
+-- Diminishing-returns quality bonus: max * q / (q + scale). Never exceeds max.
+function EvolutionCalculator.computeQualityPromotionBonus(stageEvolutionQuality: number): number
+	if typeof(stageEvolutionQuality) ~= "number" or not isFiniteNumber(stageEvolutionQuality) then
+		return 0
+	end
+	if stageEvolutionQuality <= 0 then
+		return 0
+	end
+	local maxBonus = StageConfig.MAX_QUALITY_PROMOTION_BONUS
+	local scale = StageConfig.QUALITY_BONUS_SCALE
+	local bonus = maxBonus * stageEvolutionQuality / (stageEvolutionQuality + scale)
+	if bonus < 0 then
+		return 0
+	end
+	if bonus > maxBonus then
+		return maxBonus
+	end
+	return bonus
+end
+
+function EvolutionCalculator.computeAdjustedPromotionChance(
+	basePromotionChance: number,
+	qualityPromotionBonus: number
+): number
+	local adjusted = basePromotionChance + qualityPromotionBonus
+	if adjusted < 0 then
+		return 0
+	end
+	if adjusted > 1 then
+		return 1
+	end
+	return adjusted
+end
+
+local function resolvePromotedRarity(
+	currentRarity: CreatureTypes.RarityId,
+	validatedRoll: number,
+	stageEvolutionQuality: number
+): (CreatureTypes.RarityId, boolean, number, number, number)
+	local baseChance = StageConfig.BASE_PROMOTION_CHANCE
+	local bonus = EvolutionCalculator.computeQualityPromotionBonus(stageEvolutionQuality)
+	local adjusted = EvolutionCalculator.computeAdjustedPromotionChance(baseChance, bonus)
+	local rolledRarity: CreatureTypes.RarityId = if validatedRoll < adjusted then "Uncommon" else "Common"
+	local resultingRarity = CreatureTypes.maxRarity(currentRarity, rolledRarity)
+	local promoted = CreatureTypes.getRarityRank(resultingRarity) > CreatureTypes.getRarityRank(currentRarity)
+	return resultingRarity, promoted, baseChance, bonus, adjusted
 end
 
 function EvolutionCalculator.validateRoll(roll: number): number?
@@ -298,10 +357,11 @@ end
 
 local function predictStage0(
 	effective: CreatureTypes.AffinityTotals,
-	assessment: InfluenceAssessment
+	assessment: InfluenceAssessment,
+	stageEvolutionQuality: number
 ): CreatureTypes.EvolutionPrediction
 	if EvolutionCalculator.getTotalAffinity(effective) < EvolutionCalculator.MINIMUM_TOTAL_AFFINITY then
-		return withInfluenceFields({
+		return withPredictionFields({
 			eligible = false,
 			reason = "InsufficientAffinity",
 			dominantEffectiveAffinity = nil,
@@ -309,14 +369,14 @@ local function predictStage0(
 			predictedBaseFormId = nil,
 			predictedFinalFormId = nil,
 			familyLabel = nil,
-		}, assessment)
+		}, assessment, stageEvolutionQuality)
 	end
 
 	local dominant = EvolutionCalculator.getDominantAffinity(effective)
 	local familyLineageId = LineageDefinitions.getFamilyLineageId(dominant)
 	assert(familyLineageId ~= nil, "Missing family lineage for dominant affinity")
 
-	return withInfluenceFields({
+	return withPredictionFields({
 		eligible = true,
 		reason = nil,
 		dominantEffectiveAffinity = dominant,
@@ -324,17 +384,18 @@ local function predictStage0(
 		predictedBaseFormId = familyLineageId,
 		predictedFinalFormId = familyLineageId,
 		familyLabel = FAMILY_LABELS[dominant],
-	}, assessment)
+	}, assessment, stageEvolutionQuality)
 end
 
 local function predictStage1(
 	formId: CreatureTypes.FormId,
 	effective: CreatureTypes.AffinityTotals,
 	stageInfluences: CreatureTypes.InfluenceTotals,
-	assessment: InfluenceAssessment
+	assessment: InfluenceAssessment,
+	stageEvolutionQuality: number
 ): CreatureTypes.EvolutionPrediction
 	if EvolutionCalculator.getTotalAffinity(effective) < (StageConfig.getMinimumTotalAffinity(1) or 30) then
-		return withInfluenceFields({
+		return withPredictionFields({
 			eligible = false,
 			reason = "InsufficientAffinity",
 			dominantEffectiveAffinity = nil,
@@ -342,11 +403,11 @@ local function predictStage1(
 			predictedBaseFormId = nil,
 			predictedFinalFormId = nil,
 			familyLabel = nil,
-		}, assessment)
+		}, assessment, stageEvolutionQuality)
 	end
 
 	if Stage2Routes.getRouteTable(formId) == nil then
-		return withInfluenceFields({
+		return withPredictionFields({
 			eligible = false,
 			reason = "InvalidParentForm",
 			dominantEffectiveAffinity = nil,
@@ -354,13 +415,13 @@ local function predictStage1(
 			predictedBaseFormId = nil,
 			predictedFinalFormId = nil,
 			familyLabel = nil,
-		}, assessment)
+		}, assessment, stageEvolutionQuality)
 	end
 
 	local dominant = EvolutionCalculator.getDominantAffinity(effective)
 	local baseFormId = Stage2Routes.resolve(formId, dominant)
 	if baseFormId == nil then
-		return withInfluenceFields({
+		return withPredictionFields({
 			eligible = false,
 			reason = "NoRoute",
 			dominantEffectiveAffinity = dominant,
@@ -368,7 +429,7 @@ local function predictStage1(
 			predictedBaseFormId = nil,
 			predictedFinalFormId = nil,
 			familyLabel = FAMILY_LABELS[dominant],
-		}, assessment)
+		}, assessment, stageEvolutionQuality)
 	end
 
 	local finalFormId, qualifyingId = EvolutionCalculator.resolveSpecializedVariant(baseFormId, stageInfluences)
@@ -384,7 +445,7 @@ local function predictStage1(
 		}
 	end
 
-	return withInfluenceFields({
+	return withPredictionFields({
 		eligible = true,
 		reason = nil,
 		dominantEffectiveAffinity = dominant,
@@ -392,7 +453,7 @@ local function predictStage1(
 		predictedBaseFormId = baseFormId,
 		predictedFinalFormId = finalFormId,
 		familyLabel = FAMILY_LABELS[dominant],
-	}, predictionAssessment)
+	}, predictionAssessment, stageEvolutionQuality)
 end
 
 function EvolutionCalculator.predictEvolution(input: EvolutionInput): CreatureTypes.EvolutionPrediction
@@ -401,14 +462,15 @@ function EvolutionCalculator.predictEvolution(input: EvolutionInput): CreatureTy
 		input.heritageAffinities
 	)
 	local assessment = EvolutionCalculator.assessStageInfluences(input.stageInfluences)
+	local quality = input.stageEvolutionQuality
 
 	if input.stage == 0 then
-		return predictStage0(effective, assessment)
+		return predictStage0(effective, assessment, quality)
 	elseif input.stage == 1 then
-		return predictStage1(input.formId, effective, input.stageInfluences, assessment)
+		return predictStage1(input.formId, effective, input.stageInfluences, assessment, quality)
 	end
 
-	return withInfluenceFields({
+	return withPredictionFields({
 		eligible = false,
 		reason = "UnsupportedStage",
 		dominantEffectiveAffinity = nil,
@@ -416,13 +478,13 @@ function EvolutionCalculator.predictEvolution(input: EvolutionInput): CreatureTy
 		predictedBaseFormId = nil,
 		predictedFinalFormId = nil,
 		familyLabel = nil,
-	}, assessment)
+	}, assessment, quality)
 end
 
 function EvolutionCalculator.resolveJuvenileEvolution(
 	affinityTotals: CreatureTypes.AffinityTotals
 ): CreatureTypes.JuvenileEvolutionResult
-	local prediction = predictStage0(affinityTotals, emptyInfluenceAssessment())
+	local prediction = predictStage0(affinityTotals, emptyInfluenceAssessment(), 0)
 	return {
 		eligible = prediction.eligible,
 		reason = prediction.reason,
@@ -465,6 +527,9 @@ local function ineligibleResolved(
 		heritageTransfer = nil,
 		heritageInfluenceTransfer = nil,
 		qualifyingInfluenceId = nil,
+		qualityPromotionBonus = nil,
+		basePromotionChance = nil,
+		adjustedPromotionChance = nil,
 	}
 end
 
@@ -492,10 +557,8 @@ local function resolveStage0(input: EvolutionInput): CreatureTypes.ResolvedEvolu
 		input.heritageAffinities
 	)
 	local dominant = EvolutionCalculator.getDominantAffinity(effective)
-	local rolledRarity: CreatureTypes.RarityId = if validatedRoll < EvolutionCalculator.UNCOMMON_PROMOTION_THRESHOLD
-		then "Uncommon"
-		else "Common"
-	local resultingRarity = CreatureTypes.maxRarity(input.rarity, rolledRarity)
+	local resultingRarity, promoted, baseChance, bonus, adjusted =
+		resolvePromotedRarity(input.rarity, validatedRoll, input.stageEvolutionQuality)
 	local lineage = LineageDefinitions.getJuvenileByAffinityAndRarity(dominant, resultingRarity)
 	assert(lineage ~= nil, "Missing juvenile lineage for affinity/rarity pair")
 
@@ -507,11 +570,14 @@ local function resolveStage0(input: EvolutionInput): CreatureTypes.ResolvedEvolu
 		baseFormId = lineage.id,
 		nextStage = 1,
 		rarity = resultingRarity,
-		promoted = CreatureTypes.getRarityRank(resultingRarity) > CreatureTypes.getRarityRank(input.rarity),
+		promoted = promoted,
 		roll = validatedRoll,
 		heritageTransfer = EvolutionCalculator.computeHeritageTransfer(input.stageAffinities),
 		heritageInfluenceTransfer = EvolutionCalculator.computeHeritageInfluenceTransfer(input.stageInfluences),
 		qualifyingInfluenceId = nil,
+		qualityPromotionBonus = bonus,
+		basePromotionChance = baseChance,
+		adjustedPromotionChance = adjusted,
 	}
 end
 
@@ -526,6 +592,15 @@ local function resolveStage1(input: EvolutionInput): CreatureTypes.ResolvedEvolu
 
 	if not EvolutionCalculator.hasSufficientAffinityForStage(1, input.stageAffinities, input.heritageAffinities) then
 		return ineligibleResolved("InsufficientAffinity", nil)
+	end
+
+	local roll = input.roll
+	if roll == nil then
+		return ineligibleResolved("InvalidRoll", nil)
+	end
+	local validatedRoll = EvolutionCalculator.validateRoll(roll)
+	if validatedRoll == nil then
+		return ineligibleResolved("InvalidRoll", nil)
 	end
 
 	local effective = EvolutionCalculator.computeEffectiveAffinities(
@@ -544,17 +619,23 @@ local function resolveStage1(input: EvolutionInput): CreatureTypes.ResolvedEvolu
 			nextStage = nil,
 			rarity = nil,
 			promoted = nil,
-			roll = nil,
+			roll = validatedRoll,
 			heritageTransfer = nil,
 			heritageInfluenceTransfer = nil,
 			qualifyingInfluenceId = nil,
+			qualityPromotionBonus = nil,
+			basePromotionChance = nil,
+			adjustedPromotionChance = nil,
 		}
 	end
 
+	-- Form + influence first; quality only affects rarity afterward.
 	local finalFormId, qualifyingId = EvolutionCalculator.resolveSpecializedVariant(
 		baseFormId,
 		input.stageInfluences
 	)
+	local resultingRarity, promoted, baseChance, bonus, adjusted =
+		resolvePromotedRarity(input.rarity, validatedRoll, input.stageEvolutionQuality)
 
 	return {
 		eligible = true,
@@ -563,12 +644,15 @@ local function resolveStage1(input: EvolutionInput): CreatureTypes.ResolvedEvolu
 		nextFormId = finalFormId,
 		baseFormId = baseFormId,
 		nextStage = 2,
-		rarity = input.rarity,
-		promoted = false,
-		roll = nil,
+		rarity = resultingRarity,
+		promoted = promoted,
+		roll = validatedRoll,
 		heritageTransfer = EvolutionCalculator.computeHeritageTransfer(input.stageAffinities),
 		heritageInfluenceTransfer = EvolutionCalculator.computeHeritageInfluenceTransfer(input.stageInfluences),
 		qualifyingInfluenceId = qualifyingId,
+		qualityPromotionBonus = bonus,
+		basePromotionChance = baseChance,
+		adjustedPromotionChance = adjusted,
 	}
 end
 
@@ -586,7 +670,8 @@ function EvolutionCalculator.resolveJuvenilePromotion(
 	affinityTotals: CreatureTypes.AffinityTotals,
 	growthProgress: number,
 	currentRarity: CreatureTypes.RarityId,
-	roll: number
+	roll: number,
+	stageEvolutionQuality: number?
 ): CreatureTypes.ResolvedJuvenileEvolution
 	local resolved = EvolutionCalculator.resolveEvolution({
 		formId = "ProtoRex",
@@ -596,6 +681,7 @@ function EvolutionCalculator.resolveJuvenilePromotion(
 		heritageAffinities = CreatureTypes.createEmptyAffinities(),
 		stageInfluences = CreatureTypes.createEmptyInfluences(),
 		heritageInfluences = CreatureTypes.createEmptyInfluences(),
+		stageEvolutionQuality = stageEvolutionQuality or 0,
 		growthProgress = growthProgress,
 		roll = roll,
 	})

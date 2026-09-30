@@ -4,15 +4,20 @@
 -- Do not edit this script directly in Studio; change the file and sync with Rojo.
 -- rojo-sync-marker: ownership-confirmed
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local TweenService = game:GetService("TweenService")
 
-print("ConveyorService started")
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Creatures = Shared:WaitForChild("creatures")
+local ConveyorSpawnWeights = require(Creatures:WaitForChild("ConveyorSpawnWeights"))
+local FeedPresentationDefinitions = require(Creatures:WaitForChild("FeedPresentationDefinitions"))
+local MaterialEconomyDefinitions = require(Shared:WaitForChild("economy"):WaitForChild("MaterialEconomyDefinitions"))
+local MaterialBillboardService = require(script.Parent:WaitForChild("materials"):WaitForChild("MaterialBillboardService"))
+local ConveyorPurchaseService = require(script.Parent:WaitForChild("economy"):WaitForChild("ConveyorPurchaseService"))
 
-type SpawnWeightEntry = {
-	feedId: string,
-	weight: number,
-}
+print("ConveyorService started")
+ConveyorPurchaseService.start()
 
 type ValidatedSpawnEntry = {
 	template: BasePart,
@@ -20,16 +25,8 @@ type ValidatedSpawnEntry = {
 	weight: number,
 }
 
--- Weighted pool keyed by canonical FeedId (not template instance name).
--- Specialized feeds are weighted high for development testing.
-local SPAWN_WEIGHTS: { SpawnWeightEntry } = {
-	{ feedId = "RawMeat", weight = 35 },
-	{ feedId = "LeafBundle", weight = 15 },
-	{ feedId = "CrystalChunk", weight = 15 },
-	{ feedId = "InsectCluster", weight = 25 },
-	{ feedId = "FungalCore", weight = 25 },
-	{ feedId = "ObsidianShard", weight = 25 },
-}
+-- Production pool from shared pure module (basic 24 / premium 6 / specialized 3).
+local SPAWN_WEIGHTS = ConveyorSpawnWeights.getProductionPool()
 
 local rng = Random.new()
 
@@ -158,18 +155,31 @@ local function buildSpawnPool(): ({ ValidatedSpawnEntry }, number)
 end
 
 local spawnPool, spawnPoolTotalWeight = buildSpawnPool()
+local categories = ConveyorSpawnWeights.getCategoryWeights(SPAWN_WEIGHTS)
+print(string.format(
+	"[ConveyorService] Spawn pool ready total=%d basic=%d premium=%d specialized=%d entries=%d",
+	spawnPoolTotalWeight,
+	categories.basic,
+	categories.premium,
+	categories.specialized,
+	#spawnPool
+))
 
 local function selectSpawnEntry(): ValidatedSpawnEntry
-	local roll = rng:NextNumber(0, spawnPoolTotalWeight)
-	local cumulative = 0
-
+	-- Select by canonical FeedId via pure weighted selector, then map to validated template entry.
+	local weightEntries: { ConveyorSpawnWeights.SpawnWeightEntry } = {}
 	for _, entry in spawnPool do
-		cumulative += entry.weight
-		if roll < cumulative then
+		table.insert(weightEntries, { feedId = entry.feedId, weight = entry.weight })
+	end
+	local feedId = ConveyorSpawnWeights.selectWithRandom(weightEntries, rng)
+	if feedId == nil then
+		return spawnPool[#spawnPool]
+	end
+	for _, entry in spawnPool do
+		if entry.feedId == feedId then
 			return entry
 		end
 	end
-
 	return spawnPool[#spawnPool]
 end
 
@@ -215,7 +225,23 @@ local function spawnMaterial(conveyorName: string, startPart: BasePart, endPart:
 	material.CFrame = startPart.CFrame
 	material.Parent = spawnedMaterials
 
-	local collected = false
+	local presentation = FeedPresentationDefinitions.get(feedId)
+	local economy = MaterialEconomyDefinitions.get(feedId)
+	if economy == nil then
+		warn(string.format("[ConveyorService] Missing economy definition for FeedId=%s; destroying spawn", feedId))
+		material:Destroy()
+		return
+	end
+
+	-- Informational attributes only; purchase validation uses MaterialEconomyDefinitions.
+	material:SetAttribute("FeedId", feedId)
+	material:SetAttribute("PurchasePrice", economy.purchasePrice)
+	if presentation ~= nil then
+		material:SetAttribute("FeedCategory", presentation.categoryId)
+		material:SetAttribute("DisplayName", presentation.displayName)
+	end
+
+	local purchased = false
 	local tween = TweenService:Create(
 		material,
 		TweenInfo.new(TRAVEL_TIME, Enum.EasingStyle.Linear),
@@ -232,79 +258,50 @@ local function spawnMaterial(conveyorName: string, startPart: BasePart, endPart:
 			prompt.Parent = material
 		else
 			prompt = Instance.new("ProximityPrompt")
-			prompt.ActionText = "Pick Up"
-			prompt.ObjectText = feedId
 			prompt.RequiresLineOfSight = false
 			prompt.MaxActivationDistance = 12
 			prompt.Parent = material
 		end
 		warn(string.format(
-			"[ConveyorService] Template %s (FeedId=%s) had no ProximityPrompt; attached runtime clone for pickup",
+			"[ConveyorService] Template %s (FeedId=%s) had no ProximityPrompt; attached runtime Buy prompt",
 			template.Name,
 			feedId
 		))
 	end
 
+	local billboardResult = MaterialBillboardService.attach(material, feedId)
+	if not billboardResult.success then
+		warn(string.format(
+			"[ConveyorService] Billboard attach failed for FeedId=%s reason=%s",
+			feedId,
+			tostring(billboardResult.reason)
+		))
+	end
+
+	ConveyorPurchaseService.register(material, feedId, prompt, billboardResult.billboard)
+
 	if prompt then
 		prompt.Triggered:Connect(function(player)
-			if collected then
+			if purchased then
+				return
+			end
+			if material.Parent == nil then
 				return
 			end
 
-			local character = player.Character
-			if not character then
-				return
+			local ok, reason = ConveyorPurchaseService.tryPurchase(player, material)
+			if ok then
+				purchased = true
+				tween:Cancel()
+				print(string.format("%s purchased %s (FeedId=%s)", player.Name, template.Name, feedId))
+			else
+				print(string.format(
+					"%s failed purchase %s reason=%s",
+					player.Name,
+					feedId,
+					tostring(reason)
+				))
 			end
-
-			local rootPart = character:FindFirstChild("HumanoidRootPart")
-			if not rootPart or not rootPart:IsA("BasePart") then
-				return
-			end
-
-			-- Find the right hand (R15) or right arm (R6).
-			local rightHand = character:FindFirstChild("RightHand")
-			if not rightHand or not rightHand:IsA("BasePart") then
-				rightHand = character:FindFirstChild("Right Arm")
-			end
-			if not rightHand or not rightHand:IsA("BasePart") then
-				return
-			end
-
-			-- Prevent players from carrying multiple items.
-			if character:GetAttribute("CarryingItem") then
-				return
-			end
-
-			collected = true
-			tween:Cancel()
-
-			prompt.Enabled = false
-
-			material.Anchored = false
-			material.CanCollide = false
-			material.Massless = true
-
-			-- Move the material into the player's right hand.
-			material.CFrame = rightHand.CFrame * CFrame.new(0, -0.5, 0)
-
-			-- Put it inside the character model.
-			material.Parent = character
-			material.Name = "CarriedMeat"
-			character:SetAttribute("CarryingItem", true)
-
-			local weld = Instance.new("WeldConstraint")
-			weld.Name = "CarryWeld"
-			weld.Part0 = rightHand
-			weld.Part1 = material
-			weld.Parent = material
-
-			material.Destroying:Connect(function()
-				if character:GetAttribute("CarryingItem") and character:FindFirstChild("CarriedMeat", true) == nil then
-					character:SetAttribute("CarryingItem", nil)
-				end
-			end)
-
-			print(string.format("%s picked up %s (FeedId=%s)", player.Name, template.Name, feedId))
 		end)
 	else
 		warn(string.format("Spawned %s (FeedId=%s) is missing a ProximityPrompt", template.Name, feedId))
@@ -316,7 +313,9 @@ local function spawnMaterial(conveyorName: string, startPart: BasePart, endPart:
 
 	local completedConn
 	completedConn = tween.Completed:Connect(function()
-		if not collected and material then
+		local record = ConveyorPurchaseService.getRecord(material)
+		local stillAvailable = record ~= nil and record.state == "Available"
+		if stillAvailable and material.Parent ~= nil then
 			material:Destroy()
 		end
 		if completedConn then

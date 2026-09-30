@@ -42,6 +42,8 @@ export type FeedDefinition = {
 	displayName: string,
 	affinityContribution: AffinityTotals,
 	growth: number,
+	-- Stage-local evolution quality contribution. Premium feeds have evolutionQuality > 0.
+	evolutionQuality: number,
 	-- Optional specialized influence contribution (not a core affinity).
 	influenceContribution: InfluenceTotals?,
 }
@@ -73,6 +75,10 @@ export type EvolutionPrediction = {
 	strongestInfluenceShare: number,
 	influenceStrengthLabel: InfluenceStrengthLabel,
 	qualifyingInfluenceId: InfluenceId?,
+	stageEvolutionQuality: number,
+	qualityPromotionBonus: number,
+	basePromotionChance: number,
+	adjustedPromotionChance: number,
 }
 
 -- Resolved evolution outcome from the pure calculator.
@@ -89,6 +95,9 @@ export type ResolvedEvolution = {
 	heritageTransfer: AffinityTotals?,
 	heritageInfluenceTransfer: InfluenceTotals?,
 	qualifyingInfluenceId: InfluenceId?,
+	qualityPromotionBonus: number?,
+	basePromotionChance: number?,
+	adjustedPromotionChance: number?,
 }
 
 -- Back-compat Stage 0 prediction shape used by older tests/harness paths.
