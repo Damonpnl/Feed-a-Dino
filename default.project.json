@@ -12,7 +12,15 @@
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"
+      },
+      "UnitTestRunner": {
+        "$path": "tests/UnitTestRunner.server.luau",
+        "$properties": { "Disabled": true }
       }
+    },
+
+    "ServerStorage": {
+      "UnitTest": { "$path": "tests/unit" }
     },
 
     "StarterPlayer": {
