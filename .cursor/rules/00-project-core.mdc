@@ -12,7 +12,7 @@ This is a Roblox game built with:
 - Cursor for AI-assisted development
 - Roblox Studio MCP for inspecting the live Studio data model
 
-Read `docs/FEED_A_PET_CONTEXT.md` before making architectural decisions.
+Read `docs/FEED_A_PET_MASTER_CONTEXT.md` before making architectural decisions.
 Read `docs/RESOURCE_SPECIFICATION.md` before changing resources, rarities, nodes, drops, or field spawning; its explicit tables and rules are authoritative.
 
 When working on creature feeding, evolution, mutations, or lineage definitions, also read:

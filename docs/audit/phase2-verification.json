@@ -1,0 +1,43 @@
+{
+  "verifiedOn": "2026-10-10",
+  "phase": 2,
+  "status": "PASSED",
+  "studioId": "4bfc5802-0955-4c58-bbb1-55f9acbd71f5",
+  "placeId": 104154372052853,
+  "finalMode": "Edit",
+  "cycleSeconds": 300,
+  "resetSeconds": 10,
+  "resetStartsAtSeconds": 290,
+  "tests": {
+    "unitCasesPassed": 114,
+    "weightedRolls": 1000000,
+    "exactWeightedTickets": 50000,
+    "resetInteractionOrderings": 1000,
+    "liveFieldIntegrationChecks": 20,
+    "liveFieldRuntimeChecks": 14,
+    "clientBillboardAssertions": 88,
+    "clientPresentationChecks": 17,
+    "visualComponentChecks": 9,
+    "optionalPhase2ResetObserver": "NOT RUN"
+  },
+  "finalInspection": {
+    "areas": 5,
+    "resources": 40,
+    "nodes": 25,
+    "definitionErrors": 0,
+    "sourceFilesCompared": 55,
+    "sourceMismatches": [],
+    "temporaryFixtures": [],
+    "duplicateScriptPaths": 0,
+    "baseParts": 1412,
+    "geometryDigest": 1212267917,
+    "geometryMatchesPhase1": true,
+    "unitTestRunnerDisabled": true,
+    "productionDataStoreRequests": false
+  },
+  "limitations": [
+    "Audio IDs await legitimate assets; sound priority hooks tested.",
+    "No two-human multiplayer or load test claimed.",
+    "Pre-existing purchase infrastructure and trainer pricing limitations remain; see Phase 1 report."
+  ]
+}

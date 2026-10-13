@@ -1,80 +1,31 @@
 --!strict
-
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-
-local PlayerData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PlayerData"))
-
+local PlayerData = require(game.ReplicatedStorage.Shared.PlayerData)
+local SessionStore = require(script.Parent.SessionStore)
 local DataService = {}
-
 local STORE_NAME = "MonsterProgress_v1"
 local AUTOSAVE_SECONDS = 60
-
-type Session = {
-	data: PlayerData.SaveData,
-	canSave: boolean,
-}
-
-local sessions: { [Player]: Session } = {}
+local started, closing = false, false
 local store: DataStore? = nil
-local storeUnavailableLogged = false
-
-local function dataStoreHint(errMsg: string): string
-	local lower = string.lower(errMsg)
-	if string.find(lower, "studio access", 1, true) or string.find(lower, "api services", 1, true) then
-		return " Enable Game Settings → Security → Enable Studio Access to API Services, then restart Play."
-	end
-	if RunService:IsStudio() then
-		return " DataStores often fail in Studio until API access is enabled (live servers use published place settings)."
-	end
-	return ""
+local function getStore(): DataStore
+	if not store then store = DataStoreService:GetDataStore(STORE_NAME) end
+	return store :: DataStore
 end
-
-local function getStore(): DataStore?
-	if store ~= nil then
-		return store
-	end
-	local ok, result = pcall(function()
-		return DataStoreService:GetDataStore(STORE_NAME)
-	end)
-	if ok and result ~= nil then
-		store = result
-		return result
-	end
-	if not storeUnavailableLogged then
-		storeUnavailableLogged = true
-		local detail = if ok then "GetDataStore returned nil" else tostring(result)
-		warn("[DataService] DataStore unavailable (" .. STORE_NAME .. "): " .. detail .. dataStoreHint(detail))
-	end
-	return nil
-end
-
-local function getAsyncWithRetry(dataStore: DataStore, key: string): (boolean, any)
-	local lastErr: any = nil
-	for attempt = 1, 3 do
-		local ok, result = pcall(function()
-			return dataStore:GetAsync(key)
-		end)
-		if ok then
-			return true, result
-		end
-		lastErr = result
-		local errText = tostring(result)
-		if string.find(string.lower(errText), "studio access", 1, true) then
-			break
-		end
-		if attempt < 3 then
-			task.wait(attempt)
-		end
-	end
-	return false, lastErr
-end
-
-local function keyFor(player: Player): string
-	return "u_" .. tostring(player.UserId)
-end
+-- Studio must never touch production saves, even when API access is enabled.
+local studio = RunService:IsStudio()
+local sessions = SessionStore.new({
+	get = function(key)
+		if studio then return nil end
+		return getStore():GetAsync(key)
+	end,
+	update = function(key, transform)
+		assert(not studio, "Studio production writes are disabled")
+		return getStore():UpdateAsync(key, transform)
+	end,
+}, {readOnly=studio})
+local function keyFor(player: Player): string return "u_" .. tostring(player.UserId) end
 
 local function publishLeaderstats(player: Player, data: PlayerData.SaveData)
 	local existingFolder = player:FindFirstChild("leaderstats")
@@ -112,112 +63,62 @@ local function publishLeaderstats(player: Player, data: PlayerData.SaveData)
 	stat("Power", data.Power)
 end
 
-function DataService.publish(player: Player)
-	local session = sessions[player]
-	if session == nil then
-		return
-	end
-	player:SetAttribute("Cash", session.data.Cash)
-	player:SetAttribute("Power", session.data.Power)
-	publishLeaderstats(player, session.data)
-end
-
 function DataService.get(player: Player): PlayerData.SaveData?
-	local session = sessions[player]
-	if session == nil then
-		return nil
-	end
-	return session.data
+	return sessions:get(keyFor(player))
 end
-
+function DataService.getStatus(player: Player)
+	return sessions:status(keyFor(player))
+end
+function DataService.isWritable(player: Player): boolean
+	local status = DataService.getStatus(player)
+	return not closing and player.Parent == Players and status ~= nil and status.CanSave
+		and not status.Closing and (status.Status == "Loaded" or status.Status == "Missing")
+end
+function DataService.publish(player: Player)
+	local data = DataService.get(player)
+	if not data or player.Parent ~= Players then return end
+	player:SetAttribute("Cash", data.Cash)
+	player:SetAttribute("Power", data.Power)
+	publishLeaderstats(player, data)
+end
 function DataService.load(player: Player)
-	if sessions[player] ~= nil then
-		return
-	end
-
-	local loaded: any = nil
-	local canSave = false
-	local key = keyFor(player)
-	local dataStore = getStore()
-	if dataStore ~= nil then
-		local ok, result = getAsyncWithRetry(dataStore, key)
-		if ok then
-			loaded = result
-			canSave = true
-			-- Missing key is success (nil): new player, not a DataStore failure.
-		else
-			local errText = tostring(result)
-			warn(
-				"[DataService] Load failed for "
-					.. player.Name
-					.. " (userId="
-					.. tostring(player.UserId)
-					.. ", key="
-					.. key
-					.. "): "
-					.. errText
-					.. dataStoreHint(errText)
-					.. " Session will not save (existing cloud data is not overwritten)."
-			)
-		end
-	else
-		warn(
-			"[DataService] Load skipped for "
-				.. player.Name
-				.. " (no DataStore handle); session defaults only, will not save."
-		)
-	end
-
-	sessions[player] = {
-		data = PlayerData.normalize(loaded),
-		canSave = canSave,
-	}
+	if closing then return end
+	sessions:load(keyFor(player))
+	if player.Parent ~= Players then return end
+	local status = sessions:status(keyFor(player))
+	player:SetAttribute("DataStatus", status.Status)
 	DataService.publish(player)
 end
-
 function DataService.save(player: Player)
-	local session = sessions[player]
-	if session == nil or not session.canSave then
-		return
-	end
-	local dataStore = getStore()
-	if dataStore == nil then
-		return
-	end
-
-	local payload = session.data
-	local ok, err = pcall(function()
-		dataStore:SetAsync(keyFor(player), payload)
-	end)
-	if not ok then
-		warn("[DataService] Save failed for " .. player.Name .. ": " .. tostring(err))
-	end
+	local ok, reason = sessions:save(keyFor(player))
+	local status = sessions:status(keyFor(player))
+	if status and player.Parent == Players then player:SetAttribute("DataStatus", status.Status) end
+	return ok, reason
 end
-
 function DataService.release(player: Player)
-	DataService.save(player)
-	sessions[player] = nil
+	return sessions:release(keyFor(player))
 end
-
 function DataService.start()
-	Players.PlayerRemoving:Connect(function(player)
-		DataService.release(player)
-	end)
-
+	if started then return end
+	started = true
+	if studio then print("[DataService] Studio read-only session; no production DataStore requests.") end
+	Players.PlayerRemoving:Connect(DataService.release)
 	game:BindToClose(function()
+		closing = true
+		local pending = 0
 		for _, player in Players:GetPlayers() do
-			DataService.save(player)
+			pending += 1
+			task.spawn(function() DataService.release(player) pending -= 1 end)
 		end
+		local deadline = os.clock() + 25
+		while pending > 0 and os.clock() < deadline do task.wait(0.05) end
 	end)
-
 	task.spawn(function()
-		while true do
+		while not closing do
 			task.wait(AUTOSAVE_SECONDS)
-			for _, player in Players:GetPlayers() do
-				DataService.save(player)
-			end
+			if closing then break end
+			for _, player in Players:GetPlayers() do task.spawn(DataService.save, player) end
 		end
 	end)
 end
-
 return DataService

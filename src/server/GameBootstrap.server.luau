@@ -1,6 +1,8 @@
 --!strict
 
-local Players = game:GetService("Players")
+local errors = require(game.ReplicatedStorage.Shared.DefinitionValidation).config()
+assert(#errors == 0, "[DefinitionValidation] " .. table.concat(errors, "; "))
+print("[DefinitionValidation] PASS 5 areas, 40 launch resources, pet references, trainer ladder, billboard configuration")
 
 local BaseService = require(script.Parent.BaseService)
 local CarryService = require(script.Parent.CarryService)
@@ -12,12 +14,6 @@ local SpawnService = require(script.Parent.SpawnService)
 local TrainingService = require(script.Parent.TrainingService)
 
 DataService.start()
-Players.PlayerAdded:Connect(function(player)
-	DataService.load(player)
-end)
-for _, player in Players:GetPlayers() do
-	DataService.load(player)
-end
 
 MonsterService.start()
 CarryService.start()

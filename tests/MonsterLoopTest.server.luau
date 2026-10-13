@@ -1,4 +1,5 @@
 --!strict
+-- Opt-in regression smoke test; excluded from the production server tree.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 

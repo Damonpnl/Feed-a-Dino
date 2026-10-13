@@ -115,6 +115,8 @@ function Service:Hide(target: Instance)
 end
 
 function Service:Destroy(target: Instance)
+	local watcher = watchers[target]
+	if watcher then watcher.connection:Disconnect() watchers[target] = nil end
 	local entry = entries[target]
 	if not entry or entry.retiring then return end
 	entry.retiring = true
@@ -203,6 +205,8 @@ local function distanceUpdate()
 			entry.view:Update(entry.options, entry.target.Name)
 		end
 		entry.view.Gui.Adornee = entry.part
+		local _, maxDistance = Data.distances(entry.options)
+		entry.view.Gui.MaxDistance = maxDistance
 		-- The entire tag sits above the object's top, including the optional badge.
 		entry.view.Gui.StudsOffsetWorldSpace = entry.offset
 		if entry.near and entry.style.AnimationSpeed > 0 and animated < Config.MaxAnimated then
@@ -282,14 +286,14 @@ function Service:Stop()
 end
 
 function Service:GetStats()
-	local stats = { Tracked = 0, Visible = 0, Animated = 0, Retiring = 0, Watchers = 0 }
+	local stats = { Tracked = 0, Visible = 0, Animated = 0, Retiring = 0, Watchers = 0, Connections = #connections }
 	for _, entry in entries do
 		stats.Tracked += 1
 		if entry.visible then stats.Visible += 1 end
 		if entry.animated and entry.visible then stats.Animated += 1 end
 		if entry.retiring then stats.Retiring += 1 end
 	end
-	for _ in watchers do stats.Watchers += 1 end
+	for _ in watchers do stats.Watchers += 1 stats.Connections += 1 end
 	return stats
 end
 

@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-10",
+  "placeId": 104154372052853,
+  "baselineCommit": "eb552c4",
+  "verificationTool": "official Roblox Studio MCP",
+  "unitTests": {"run": 105, "passed": 105, "failed": 0},
+  "liveChecks": {"architecture": 31, "fieldCycle": 18, "resourceRuntime": 14, "networkDeathDisconnect": 14, "totalPassed": 77},
+  "forgedClientDropRequests": 40,
+  "moduleInitialization": {"serverAndShared": 37, "client": 3, "failures": 0},
+  "sourceComparison": {"matched": 54, "mismatched": 0},
+  "dependencyAudit": {"productionFiles": 46, "requireExpressions": 117, "unresolved": 0, "cycles": 0},
+  "blockout": {
+    "basePartsBefore": 1412,
+    "basePartsAfter": 1412,
+    "digestBefore": 1212267917,
+    "digestAfter": 1212267917,
+    "algorithm": "DJB2 additive modulo 2^32, seed 5381; sort fullPath|CFrame|Size|Anchored|CanCollide rows and concatenate without row separator",
+    "bases": 4,
+    "zoneBlockouts": 6,
+    "launchNodes": 25,
+    "terrainModified": false
+  },
+  "definitionErrors": 0,
+  "activeRemotes": ["ReplicatedStorage.Remotes.DropCarried", "ReplicatedStorage.Remotes.FieldRareSpawn"],
+  "finalStudioState": {"mode": "Edit", "duplicateScriptPaths": 0, "unitRunnerDisabled": true, "templatePurchaseScriptDisabled": true, "generatedGameplayPresent": false},
+  "productionDataStoreRequestsDuringTesting": 0,
+  "purchaseVerification": "BLOCKED: no legitimate receipt/gamepass pipeline found",
+  "acceptance": {"passed": 11, "blocked": 1},
+  "notTested": ["live cloud saves and outages", "published two-server session handoff", "real purchases or gamepass entitlements", "two-human multiplayer balance/playthrough"],
+  "published": false,
+  "phase2Started": false
+}

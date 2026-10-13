@@ -11,6 +11,9 @@ local basesFolder = workspace:WaitForChild("Bases")
 
 local assignedBases: { [Player]: Model } = {}
 local occupiedBases: { [Model]: boolean } = {}
+local initialized: {[Player]: boolean} = {}
+local characterConnections: {[Player]: RBXScriptConnection} = {}
+local started = false
 
 local function findFreeBase(): Model?
 	local sorted: { Model } = {}
@@ -76,9 +79,12 @@ local function moveCharacterToBase(player: Player, character: Model)
 end
 
 local function setupPlayer(player: Player)
+	if initialized[player] then return end
+	initialized[player] = true
 	DataService.load(player)
+	if player.Parent ~= Players then initialized[player] = nil return end
 	MonsterService.publish(player)
-	player.CharacterAdded:Connect(function(character)
+	characterConnections[player] = player.CharacterAdded:Connect(function(character)
 		moveCharacterToBase(player, character)
 	end)
 	if player.Character ~= nil then
@@ -87,12 +93,16 @@ local function setupPlayer(player: Player)
 end
 
 function BaseService.start()
+	if started then return end
+	started = true
 	Players.PlayerAdded:Connect(setupPlayer)
 	for _, player in Players:GetPlayers() do
-		setupPlayer(player)
+		task.spawn(setupPlayer, player)
 	end
 
 	Players.PlayerRemoving:Connect(function(player)
+		if characterConnections[player] then characterConnections[player]:Disconnect() characterConnections[player] = nil end
+		initialized[player] = nil
 		local base = assignedBases[player]
 		if base ~= nil then
 			occupiedBases[base] = nil

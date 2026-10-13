@@ -17,7 +17,7 @@ local ok, failure = xpcall(function()
 	check(#Spawn.validate() == 0, "initial runtime validation")
 	local id, record
 	for key, value in Spawn.getSnapshot().Records do
-		if value.AreaId == "Grasslands" and value.State == "World" then id, record = key, value break end
+		if value.AreaId == "Grasslands" and value.State == "AVAILABLE" then id, record = key, value break end
 	end
 	local definition = Resources.get(record.ResourceId)
 	Data.get(player).Power = definition.PowerRequired
@@ -30,7 +30,7 @@ local ok, failure = xpcall(function()
 	check(math.abs(player.Character.Humanoid.WalkSpeed-16*(1-definition.CarrySlowdown)) < 0.001, "configured slowdown")
 	local item = Carry.drop(player)
 	check(Spawn.returnToWorld(item.areaId,item.resourceId,item.token,player.Character:GetPivot().Position,player.UserId), "same-ID physical drop")
-	check(physical(id) and Spawn.getRecord(id).State == "Dropped", "drop model and record")
+	check(physical(id) and Spawn.getRecord(id).State == "DROPPED", "drop model and record")
 	player.Character:PivotTo(originalFrame)
 	script:SetAttribute("Progress", "Waiting for actual 20-second dropped expiry")
 	while Spawn.getRecord(id) do task.wait(0.1) end

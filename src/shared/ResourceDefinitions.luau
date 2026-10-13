@@ -6,8 +6,9 @@ local function add(id: string, name: string, area: string, kind: Types.ResourceK
 	affinity: Types.AffinityId, growth: number, power: number, weight: number, slowdown: number, effect: string?, launch: boolean?)
 	assert(all[id] == nil, "Duplicate resource ID: " .. id)
 	local affinities = {}
-	if affinity == "Flesh + Mineral" then affinities = { Flesh = growth / 2, Mineral = growth / 2 }
-	elseif affinity == "Flesh + Floral" then affinities = { Flesh = growth / 2, Floral = growth / 2 }
+	-- Odd totals retain every point; the first listed affinity receives the remainder.
+	if affinity == "Flesh + Mineral" then affinities = { Flesh = math.ceil(growth / 2), Mineral = math.floor(growth / 2) }
+	elseif affinity == "Flesh + Floral" then affinities = { Flesh = math.ceil(growth / 2), Floral = math.floor(growth / 2) }
 	elseif affinity ~= "Neutral" then affinities[affinity] = growth end
 	all[id] = {
 		Id = id, DisplayName = name, Area = area, ResourceType = kind, Rarity = rarity,

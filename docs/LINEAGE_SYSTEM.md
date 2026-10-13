@@ -8,7 +8,9 @@ Evolution is data on the current monster. An option is chosen when:
 2. Every affinity requirement is met.
 3. If the option lists a catalyst/family, the consumed legacy catalyst ID matches or its configured evolution family has been unlocked in the pet's saved `EvolutionFamilies`.
 
-The first matching option in the list wins. Growth resets on evolution. Affinities and family flags stay. New catalysts persist/check compatibility hooks; this task does not author new species/models for every family.
+Phase 4B replaces the prototype first-match rule. Eligible specialized branches sort by stable ID: one advances automatically; multiple become a persistent player choice. A configured normal fallback applies only if no specialized branch qualifies. Dominant-affinity ties can qualify multiple branches. Hybrid minima must be met explicitly. See [PHASE4B_REPORT.md](PHASE4B_REPORT.md) for the graph and provisional balance.
+
+Each feed/choice advances at most one stage and spends only the source threshold. Excess Growth remains in `GrowthReserve`; cumulative `TotalGrowth`, affinities, families, mutations and the same owned pet identity survive. Owned map keys and `EquippedMonster` do not change; `EvolutionForm` changes instead. Stage 5 is locked pending 4D; Awakening is separate and not implemented.
 
 The starter is Proto Rex.
 
@@ -22,3 +24,5 @@ The starter is Proto Rex.
 | Spirit Dragon | Mossback, Flora 80, growth 80, Spirit family (future-only Spirit Energy; legacy SpiritEssence compatible) |
 
 `src/shared/EvolutionCalculator.luau` is pure and has no Roblox service calls.
+
+The legacy forms above remain valid IDs. Ordinary paths now also provide JuvenileRex → MatureRex → ApexRex → AscendedRex, with ArmoredRex, VenomRex and CrystalMossRex hybrid alternatives at Stage 2. No new catalyst effects or rarity roll systems were introduced.

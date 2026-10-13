@@ -1,31 +1,32 @@
 --!nonstrict
--- Server-wide field. Pure FieldState owns all IDs, node reservations and deadlines.
-local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
+-- Server-wide spawning/presentation. ResourceService owns authoritative record transactions.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Areas = require(Shared.AreaDefinitions)
 local Resources = require(Shared.ResourceDefinitions)
 local Validation = require(Shared.ResourceValidation)
-local FieldState = require(Shared.FieldState)
+local ResourceService = require(script.Parent.ResourceService)
+local Guard = require(script.Parent.InteractionGuard)
 local Config = require(Shared.FieldConfig)
 local BillboardData = require(Shared.BillboardData)
 local BillboardMetadata = require(script.Parent.BillboardMetadataService)
 local Visuals = require(script.Parent.ResourceVisualService)
 local Service = {}
-local rng = Random.new()
-local state, folder, field, rareRemote = nil, nil, nil, nil
+local folder, field, rareRemote = nil, nil, nil
 local markers, worldModels, announced = {}, {}, {}
 local running = false
 local function now() return workspace:GetServerTimeNow() end
 
 local function sync()
+	local state = ResourceService.getSnapshot()
+	if not state then return end
 	for id, model in worldModels do
 		local record = state.Records[id]
-		if not record or record.State == "Carried" then worldModels[id] = nil model:Destroy() end
+		if not record or record.State == "CARRIED" then worldModels[id] = nil model:Destroy() end
 	end
 	for id in announced do if not state.Records[id] then announced[id] = nil end end
 	field:SetAttribute("Phase", state.Phase)
+	field:SetAttribute("Epoch", state.Epoch)
 	field:SetAttribute("Cycle", state.Cycle)
 	field:SetAttribute("NextResetAt", state.NextResetAt)
 	field:SetAttribute("ResetEndsAt", state.ResetEndsAt)
@@ -35,7 +36,7 @@ local function sync()
 		marker:SetAttribute("RespawnAt", node.RespawnAt)
 	end
 	for id, record in state.Records do
-		if record.State == "Carried" or worldModels[id] then continue end
+		if record.State == "CARRIED" or worldModels[id] then continue end
 		local definition = Resources.get(record.ResourceId)
 		local marker = record.NodeId and markers[record.NodeId]
 		local position = record.Position or (marker and marker.Position)
@@ -59,7 +60,7 @@ local function sync()
 			-- External destruction is consumption too. Internal sync removes ownership first.
 			if worldModels[id] ~= model then return end
 			worldModels[id] = nil
-			state:release(id, now())
+			ResourceService.releaseToken(record.AreaId, id)
 			task.defer(sync)
 		end)
 		model.Parent = folder
@@ -76,91 +77,79 @@ local function sync()
 	end
 end
 
-function Service.getRecord(id)
-	local record = state and state.Records[id]
-	return record and table.clone(record)
-end
-function Service.getSnapshot()
-	if not state then return nil end
-	local snapshot = {Phase = state.Phase, Cycle = state.Cycle, NextResetAt = state.NextResetAt,
-		ResetEndsAt = state.ResetEndsAt, Records = {}, Nodes = {}}
-	for id, record in state.Records do snapshot.Records[id] = table.clone(record) end
-	for id, node in state.Nodes do snapshot.Nodes[id] = table.clone(node) end
-	return snapshot
-end
+-- Compatibility APIs retain existing test/integration callers.
+Service.getRecord = ResourceService.getRecord
+Service.getSnapshot = ResourceService.getSnapshot
+Service.releaseToken = ResourceService.releaseToken
+Service.returnToWorld = ResourceService.returnToWorld
 function Service.validate()
+	local state = ResourceService.getSnapshot()
 	if not state then return {"Field is not running"} end
-	local errors = state:validate()
+	local errors = ResourceService.validate()
 	local seen = {}
 	for _, model in folder:GetChildren() do
 		local id = model:GetAttribute("ResourceInstanceId")
 		local record = id and state.Records[id]
-		if not id or seen[id] or not record or record.State == "Carried" then
+		if not id or seen[id] or not record or record.State == "CARRIED" then
 			table.insert(errors, "Duplicate or orphan world resource: " .. model.Name)
 		else seen[id] = true end
 	end
 	for id, record in state.Records do
-		if record.State ~= "Carried" and not seen[id] then table.insert(errors, "Missing physical resource: " .. id) end
+		if record.State ~= "CARRIED" and not seen[id] then table.insert(errors, "Missing physical resource: " .. id) end
+	end
+	for _, player in game:GetService("Players"):GetPlayers() do
+		local model = player.Character and player.Character:FindFirstChild("CarriedResource")
+		if model then
+			local id = model:GetAttribute("ResourceInstanceId")
+			local record = id and state.Records[id]
+			if not record or record.State ~= "CARRIED" or record.OwnerUserId ~= player.UserId or seen[id] then
+				table.insert(errors, "Duplicate/orphan carried model")
+			else seen[id] = true end
+		end
+	end
+	for id, record in state.Records do
+		if record.State == "CARRIED" and not seen[id] then table.insert(errors, "Missing carried model: " .. id) end
 	end
 	return errors
 end
-function Service.releaseToken(areaId, id)
-	if not state then return false end
-	local record = state.Records[id]
-	if not record or record.AreaId ~= areaId then return false end
-	state:release(id, now())
-	sync()
-	return true
-end
-function Service.returnToWorld(areaId, resourceId, id, position, ownerUserId)
-	if not state then return false end
-	local record = state.Records[id]
-	if not record or record.AreaId ~= areaId or record.ResourceId ~= resourceId then return false end
-	local params = RaycastParams.new()
-	local excluded = {workspace.GeneratedGameplay}
-	for _, player in Players:GetPlayers() do if player.Character then table.insert(excluded, player.Character) end end
-	params.FilterDescendantsInstances = excluded
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	local hit = workspace:Raycast(position + Vector3.new(0, 3, 0), Vector3.new(0, -200, 0), params)
-	local accepted = state:drop(id, ownerUserId, if hit then hit.Position else position, now())
-	if accepted then sync() end
-	return accepted
-end
 function Service.pickup(player, id)
-	if not state or state.Phase ~= "Normal" then return false end
+	Service.step() -- Reconcile the exact deadline before accepting an interaction between timer ticks.
+	local state = ResourceService.getSnapshot()
+	if not state or state.Phase ~= "Normal" or type(id) ~= "string" then return false end
+	if not Guard.allow(player, "Pickup", 0.15) then return false end
 	local record, model = state.Records[id], worldModels[id]
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not record or not model or not hrp or not humanoid or humanoid.Health <= 0 then return false end
-	if (hrp.Position - model.PrimaryPart.Position).Magnitude > 14 then return false end
-	if record.State == "Dropped" and now() >= record.DropExpiresAt then
-		state:release(id, now()) sync() return false
+	if not Guard.near(player, model.PrimaryPart.Position, 14) then return false end
+	if record.State == "DROPPED" and now() >= record.DropExpiresAt then
+		ResourceService.releaseToken(record.AreaId, id) return false
 	end
 	local CarryService = require(script.Parent.CarryService)
 	if CarryService.get(player) then return false end
-	local previous = state:claim(id, player.UserId)
+	local previous = ResourceService.claim(player, id)
 	if not previous then return false end
+	-- Remove the world representation before CarryService creates the carried one.
+	-- A rejected claim is rolled back and sync recreates the world representation.
+	sync()
 	local ok, accepted = pcall(CarryService.give, player, record.ResourceId, record.AreaId, id)
 	if not ok or not accepted then
 		if not ok then CarryService.drop(player) end
-		state:rollbackClaim(id, player.UserId, previous)
+		ResourceService.rollbackClaim(id, player.UserId, previous)
 		if not ok then warn("[SpawnService] Carry failed: " .. tostring(accepted)) end
 		return false
 	end
 	sync()
 	local Guardian = require(script.Parent.GuardianService)
-	Guardian.disturb(record.AreaId, if Resources.get(record.ResourceId).ResourceType == "Catalyst" then 3 else 1)
+	Guardian.onPickup(player, id, ResourceService.getRecord(id).ClaimVersion)
 	local data = require(script.Parent.DataService).get(player)
 	if data then data.DiscoveredAreas[record.AreaId] = true end
 	return true
 end
 function Service.step()
-	if not state then return end
-	local before = state.Phase
-	state:step(now())
-	if before ~= state.Phase and state.Phase == "Reset" then require(script.Parent.GuardianService).resetAll() end
-	sync()
+	local _, _, resetOccurred = ResourceService.step()
+	if resetOccurred then require(script.Parent.GuardianService).resetAll() end
 end
 function Service.start()
 	if running then return end
@@ -176,10 +165,8 @@ function Service.start()
 	if not remotes then remotes = Instance.new("Folder") remotes.Name = "Remotes" remotes.Parent = ReplicatedStorage end
 	rareRemote = remotes:FindFirstChild("FieldRareSpawn")
 	if not rareRemote then rareRemote = Instance.new("RemoteEvent") rareRemote.Name = "FieldRareSpawn" rareRemote.Parent = remotes end
-	state = FieldState.new(nodes, function(low, high) return rng:NextInteger(low, high) end,
-		function() return HttpService:GenerateGUID(false) end)
 	for _, node in nodes do markers[node.Id] = node.Marker end
-	state:start(now())
+	ResourceService.initialize(nodes, sync)
 	running = true
 	sync()
 	print("[ResourceValidation] PASS 40 launch resources, 5 areas, 25 nodes")

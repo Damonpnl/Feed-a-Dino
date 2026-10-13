@@ -8,11 +8,11 @@ local Effects = require(script.Parent.SpecialEffectDefinitions)
 local Data = {}
 export type Options = {
 	DisplayName: string?, Rarity: string?, ValueText: string?, Modifier: string?,
-	ObjectType: string?, Offset: Vector3?, NearDistance: number?, FarDistance: number?,
+	ObjectType: string?, Offset: Vector3?, NearDistance: number?, FarDistance: number?, MaxDistance: number?,
 }
 
-Data.Keys = { "DisplayName", "Rarity", "ValueText", "Modifier", "ObjectType", "Offset", "NearDistance", "FarDistance" }
-local numericKeys = { NearDistance = true, FarDistance = true }
+Data.Keys = { "DisplayName", "Rarity", "ValueText", "Modifier", "ObjectType", "Offset", "NearDistance", "FarDistance", "MaxDistance" }
+local numericKeys = { NearDistance = true, FarDistance = true, MaxDistance = true }
 
 function Data.valid(key: string, value: any): boolean
 	if key == "Offset" then
@@ -48,6 +48,7 @@ end
 function Data.distances(options: Options): (number, number)
 	local preset = Config.ObjectTypes[options.ObjectType or "Feed"] or Config.ObjectTypes.Feed
 	local near = options.NearDistance or preset.Near
+	if options.MaxDistance then return math.min(near, options.MaxDistance), options.MaxDistance end
 	return near, math.max(near + 1, options.FarDistance or preset.Far)
 end
 

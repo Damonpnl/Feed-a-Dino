@@ -7,6 +7,10 @@ local DataService = require(script.Parent.DataService)
 local BillboardMetadata = require(script.Parent.BillboardMetadataService)
 local MonsterDefinitions = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MonsterDefinitions"))
 local PlayerData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PlayerData"))
+local Evolution = require(ReplicatedStorage.Shared.EvolutionCalculator)
+local Stages = require(ReplicatedStorage.Shared.GrowthStageDefinitions)
+local Guard = require(script.Parent.InteractionGuard)
+local HttpService = game:GetService("HttpService")
 
 local MonsterService = {}
 
@@ -52,11 +56,12 @@ function MonsterService.getMultiplier(player: Player): number
 	if record == nil then
 		return 1
 	end
-	local definition = MonsterDefinitions.get(record.Species)
+	local definition = MonsterDefinitions.get(Evolution.form(record))
 	if definition == nil then
 		return 1
 	end
-	return definition.BaseMultiplier
+	local original = MonsterDefinitions.get(record.Species)
+	return math.max(definition.BaseMultiplier,if original then original.BaseMultiplier else 1)
 end
 
 function MonsterService.publish(player: Player)
@@ -66,14 +71,20 @@ function MonsterService.publish(player: Player)
 		return
 	end
 
-	local definition = MonsterDefinitions.get(record.Species)
+	local definition = MonsterDefinitions.get(Evolution.form(record))
 	local displayName = if definition ~= nil then definition.DisplayName else record.Species
 	local growthRequired = if definition ~= nil then definition.GrowthRequired else 0
 	local mutationText = table.concat(record.Mutations, ", ")
 
-	player:SetAttribute("MonsterId", record.Species)
+	player:SetAttribute("MonsterId", Evolution.form(record))
+	player:SetAttribute("OwnedPetKey", data.EquippedMonster)
+	player:SetAttribute("PetStage",record.Stage)
+	player:SetAttribute("PetStageLabel",if Stages.Stages[record.Stage] then Stages.Stages[record.Stage].Label else "Unknown")
+	player:SetAttribute("GrowthReserve",record.GrowthReserve or 0)
+	player:SetAttribute("PendingEvolution",if type(record.PendingEvolution)=="table" then HttpService:JSONEncode(record.PendingEvolution) else "")
 	player:SetAttribute("MonsterName", displayName)
 	player:SetAttribute("Growth", record.Growth)
+	player:SetAttribute("TotalGrowth", record.TotalGrowth)
 	player:SetAttribute("GrowthRequired", growthRequired)
 	player:SetAttribute("Flesh", record.Flesh)
 	player:SetAttribute("Flora", record.Flora)
@@ -90,7 +101,7 @@ function MonsterService.refreshVisual(player: Player)
 	if record == nil then
 		return
 	end
-	local definition = MonsterDefinitions.get(record.Species)
+	local definition = MonsterDefinitions.get(Evolution.form(record))
 	local baseName = player:GetAttribute("AssignedBaseName")
 	local bases = workspace:FindFirstChild("Bases")
 	local base = if typeof(baseName) == "string" and bases ~= nil then bases:FindFirstChild(baseName) else nil
@@ -103,6 +114,8 @@ function MonsterService.refreshVisual(player: Player)
 	end
 
 	local model = visuals[player]
+	local previous = if model and model:GetAttribute("EvolutionForm")~=Evolution.form(record) then model else nil
+	if previous then model=nil end
 	if model == nil then
 		model = Instance.new("Model")
 		model.Name = player.Name .. "_Monster"
@@ -112,7 +125,7 @@ function MonsterService.refreshVisual(player: Player)
 		part.CanCollide = false
 		part.Parent = model
 		model.PrimaryPart = part
-		model.Parent = generatedFolder()
+		model:SetAttribute("EvolutionForm",Evolution.form(record))
 		visuals[player] = model
 	end
 
@@ -120,11 +133,15 @@ function MonsterService.refreshVisual(player: Player)
 	if body == nil then
 		return
 	end
-	local scale = 3 + math.clamp(record.Growth / 40, 0, 4)
+	local stageScale = if definition and definition.Visual then definition.Visual.Scale else 1
+	local threshold = if definition then definition.GrowthRequired else 50
+	local scale = stageScale * (3 + math.clamp(record.Growth / threshold, 0, 1))
 	body.Size = Vector3.new(scale, scale, scale * 1.4)
 	body.Color = if definition ~= nil then definition.Color else Color3.fromRGB(180, 180, 180)
 	local top = spawn.Position.Y + spawn.Size.Y / 2
 	model:PivotTo(CFrame.new(spawn.Position.X, top + body.Size.Y / 2, spawn.Position.Z))
+	model.Parent=generatedFolder()
+	if previous then previous:Destroy() end
 
 	local income = math.max(1, math.floor(MonsterService.getMultiplier(player))) / INCOME_SECONDS
 	BillboardMetadata:Create(model, {
@@ -136,24 +153,42 @@ function MonsterService.refreshVisual(player: Player)
 	})
 end
 
-function MonsterService.evolve(player: Player, nextSpecies: string): boolean
+function MonsterService.chooseEvolution(player: Player, request: any): (boolean, string)
+	if not Guard.allow(player,"EvolutionChoice",0.2) then return false,"Please wait" end
+	if type(request)~="table" then return false,"Invalid choice" end
+	for _,key in {"PetKey","Token","BranchId"} do
+		if type(request[key])~="string" or #request[key]>160 then return false,"Invalid choice" end
+	end
+	if not DataService.isWritable(player) then return false,"Player data is not writable" end
 	local data = DataService.get(player)
 	local record = MonsterService.getRecord(player)
-	local definition = MonsterDefinitions.get(nextSpecies)
-	if data == nil or record == nil or definition == nil then
-		return false
-	end
-
-	data.Monsters[record.Species] = nil
-	record.Species = nextSpecies
-	record.Growth = 0
-	record.Rarity = definition.Rarity
-	data.Monsters[nextSpecies] = record
-	data.EquippedMonster = nextSpecies
+	if not data or not record or request.PetKey~=data.EquippedMonster then return false,"Wrong active pet" end
+	local baseName=player:GetAttribute("AssignedBaseName")
+	local bases=workspace:FindFirstChild("Bases")
+	local base=if type(baseName)=="string" and bases then bases:FindFirstChild(baseName) else nil
+	local point=base and base:FindFirstChild("FeedingPoint",true)
+	local host=point and (if point:IsA("BasePart") then point else point:FindFirstChildWhichIsA("BasePart",true))
+	if not base or not host or not Guard.ownedBase(player,base,host,14) then return false,"Approach your own pet with a living character" end
+	local count=data.Stats and data.Stats.Evolutions
+	if type(count)~="number" or count<0 or count>=Stages.MaxNumber or count%1~=0 then return false,"Invalid evolution counter" end
+	local staged=PlayerData.copy(record)
+	local calculated,ok,reason=pcall(Evolution.select,staged,request.Token,request.BranchId)
+	if not calculated then return false,"Evolution calculation failed; state kept" end
+	if not ok then return false,reason end
+	-- No yield between session validation, selection, and replacing this one owned record.
+	data.Monsters[data.EquippedMonster]=staged
 	data.Stats.Evolutions += 1
-	player:SetAttribute("StatusMessage", definition.DisplayName .. " evolved")
-	MonsterService.publish(player)
-	return true
+	local published=pcall(function() player:SetAttribute("StatusMessage",reason) MonsterService.publish(player) end)
+	if not published then warn("[MonsterService] Evolution committed; presentation needs refresh") end
+	return true,reason
+end
+
+function MonsterService.evolve(player: Player, nextForm: string): boolean
+	-- Compatibility entry point now requires a real pending eligible choice.
+	local data,record=DataService.get(player),MonsterService.getRecord(player)
+	if not data or not record or not record.PendingEvolution then return false end
+	return MonsterService.chooseEvolution(player,{PetKey=data.EquippedMonster,Token=record.PendingEvolution.Token,
+		BranchId=Evolution.form(record)..":"..nextForm})
 end
 
 function MonsterService.onBaseReady(player: Player)

@@ -2,54 +2,54 @@
 
 local DataService = require(script.Parent.DataService)
 local MonsterService = require(script.Parent.MonsterService)
+local Trainers = require(game.ReplicatedStorage.Shared.TrainerDefinitions)
+local Guard = require(script.Parent.InteractionGuard)
 
 local TrainingService = {}
 
-local TRAIN_COOLDOWN = 0.8
-local BASE_GAIN = 5
-local lastTrain: { [Player]: number } = {}
+local started = false
 
 local function setStatus(player: Player, message: string)
 	player:SetAttribute("StatusMessage", message)
 end
 
-local function train(player: Player)
-	local now = os.clock()
-	if now - (lastTrain[player] or 0) < TRAIN_COOLDOWN then
-		return
-	end
+function TrainingService.train(player: Player, base: Model, station: BasePart): boolean
+	if not Guard.allow(player, "Train", Trainers.Legacy.TrainCooldown)
+		or station.Name ~= "TrainingStation" or not Guard.ownedBase(player, base, station, 12) then return false end
 	local data = DataService.get(player)
 	if data == nil then
-		return
+		return false
 	end
 	if player:GetAttribute("AssignedBaseName") == nil then
-		return
+		return false
 	end
 
-	lastTrain[player] = now
-	local gain = math.floor(BASE_GAIN * MonsterService.getMultiplier(player)) + data.BaseUpgrades.TrainingLevel * 2
-	gain = math.max(1, gain)
+	local gain = Trainers.legacyGain(data.BaseUpgrades.TrainingLevel, MonsterService.getMultiplier(player))
 	data.Power += gain
 	data.Stats.Trainings += 1
 	DataService.publish(player)
 	setStatus(player, "+" .. tostring(gain) .. " Power")
+	return true
 end
 
-local function upgrade(player: Player)
+function TrainingService.upgrade(player: Player, base: Model, station: BasePart): boolean
+	if not Guard.allow(player, "Upgrade", 0.25)
+		or station.Name ~= "TrainingStation" or not Guard.ownedBase(player, base, station, 12) then return false end
 	local data = DataService.get(player)
 	if data == nil then
-		return
+		return false
 	end
 	local level = data.BaseUpgrades.TrainingLevel
-	local cost = 25 * (level + 1)
+	local cost = Trainers.legacyCost(level)
 	if data.Cash < cost then
 		setStatus(player, "Need " .. tostring(cost) .. " Cash")
-		return
+		return false
 	end
 	data.Cash -= cost
 	data.BaseUpgrades.TrainingLevel = level + 1
 	DataService.publish(player)
 	setStatus(player, "Training level " .. tostring(level + 1))
+	return true
 end
 
 local function ensureStation(base: Model): BasePart?
@@ -75,6 +75,8 @@ local function ensureStation(base: Model): BasePart?
 end
 
 function TrainingService.start()
+	if started then return end
+	started = true
 	local bases = workspace:WaitForChild("Bases")
 	for _, base in bases:GetChildren() do
 		if not base:IsA("Model") then
@@ -97,7 +99,7 @@ function TrainingService.start()
 			if base:GetAttribute("OwnerUserId") ~= player.UserId then
 				return
 			end
-			train(player)
+			TrainingService.train(player, base, station)
 		end)
 
 		local upgradePrompt = Instance.new("ProximityPrompt")
@@ -113,7 +115,7 @@ function TrainingService.start()
 			if base:GetAttribute("OwnerUserId") ~= player.UserId then
 				return
 			end
-			upgrade(player)
+			TrainingService.upgrade(player, base, station)
 		end)
 	end
 end

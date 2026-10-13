@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-13",
+  "placeId": 104154372052853,
+  "productionDataStoresAccessed": false,
+  "preChange4A": {"unit":195,"server":33,"client":7,"compatibility":12,"actualTwoClient":18},
+  "finalUnit": {"run":225,"passed":225,"failed":0},
+  "phase4BIntegration": {"passed":34,"actualMouseSelection":"Mossback"},
+  "phase4BClient": {"passed":6,"forgedSelections":3,"malformedRequests":20,"replayRequests":30},
+  "phase4BMultiplayer": {"passed":11,"actualClients":2,"persistence":"injected SessionStore adapter"},
+  "regressions": {"phase1":32,"phase3":155,"fieldRuntime":14,"phase4AServer":33,"phase4AClient":7,"updatedCompatibility":13},
+  "finalStudio": {"mode":"Edit","matchedSourceFiles":66,"sourceMismatches":0,"duplicateScriptPaths":0,"definitionErrors":0,"baseParts":1412,"geometryDigest":1212267917,"resourceNodes":25},
+  "build":"PASS",
+  "diffCheck":"PASS",
+  "limitations":["Production cloud rejoin and multi-server durability not tested","Physical mobile devices not tested","Final assets remain placeholders","Stage 5 locked until Phase 4D","Provisional balance requires approval"],
+  "testSetupCorrections":["Restarted first post-change 4A attempt after client listener missed the preview","Explicitly synchronized final new test module into Edit mode before final 225-test run"]
+}

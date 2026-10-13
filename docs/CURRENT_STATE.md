@@ -1,12 +1,18 @@
 # Current State
 
-Last updated: 2026-10-09
+Last updated: 2026-10-13
 
-**Product:** [Feed a Pet](FEED_A_PET_CONTEXT.md) — compact steal → escape → feed → evolve loop on a long, narrow path. Use `FEED_A_PET_CONTEXT.md` as the authoritative product and implementation direction when it conflicts with older docs or legacy naming.
+**Product:** [Feed a Pet](FEED_A_PET_MASTER_CONTEXT.md) — compact steal → escape → feed → evolve loop on a long, narrow path. Use the master context for overarching intent and `RESOURCE_SPECIFICATION.md` for finalized resource mechanics. Current resource-system verification is recorded in [PHASE2_RESULTS.md](PHASE2_RESULTS.md); [PHASE1_RESULTS.md](PHASE1_RESULTS.md) retains the architecture audit and purchase-infrastructure limitations.
 
 **Repo note:** Rojo project name and some module IDs (for example `MonsterService`, `MonsterDefinitions`) are legacy; new player-facing copy and docs should say **pet**, not rebuild old “Feed a Dino” conveyor/simulation identity.
 
 **Resource authority:** [RESOURCE_SPECIFICATION.md](RESOURCE_SPECIFICATION.md) owns the exact 40 launch resources, ten-rarity order, five-area pools and synchronized field rules. Older example tables are superseded.
+
+**Phase 3:** Carry/guardian implementation and verification are recorded in [PHASE3_RESULTS.md](PHASE3_RESULTS.md), with temporary encounter tuning and lifecycle contracts in [PHASE3_GAMEPLAY.md](PHASE3_GAMEPLAY.md). All 17 Phase 3 criteria passed, including an actual two-client Studio test.
+
+**Phase 4A:** Server-authoritative preview/confirmation and persistent current/cumulative Growth are implemented in the existing feeding/save services. See [PHASE4A_REPORT.md](PHASE4A_REPORT.md) for test evidence and outstanding checks. Existing prototype evolution/family/Leech behavior is preserved; no new stages, graphs or Phase 4B mechanics. Ordinary Studio sessions remain read-only, so feeding tests use explicitly injected in-memory sessions, never production saves.
+
+**Phase 4B:** Supersedes the prototype evolution policy above with a data-driven Stage 0–5 framework (5 locked), one-stage transitions, Growth reserve, primary/hybrid branches and persistent choices. Owned keys/PetId remain stable while EvolutionForm changes; duplicate forms cannot overwrite another pet. See [PHASE4B_REPORT.md](PHASE4B_REPORT.md) for verification status, provisional thresholds, migration policy and 4C handoff. No full catalyst/rarity/Awakening system is added.
 
 ## North-star loops
 
@@ -46,9 +52,9 @@ Modules live under `src/shared`, `src/server`, `src/client`. Obsolete conveyor, 
 
 | Layer | Modules |
 |-------|---------|
-| Shared definitions | `FeedDefinitions`, `CatalystDefinitions`, `MonsterDefinitions`, `AreaDefinitions`, `RarityDefinitions`, `ResourceCatalog`, `ResourceTypes`, `EvolutionCalculator`, `PlayerData` |
-| Server services | `DataService`, `BaseService`, `CarryService`, `SpawnService`, `GuardianService`, `FeedService`, `MonsterService`, `TrainingService`, `ZoneGeometry`; bootstrap `GameBootstrap.server.luau`; smoke `MonsterLoopTest.server.luau` |
-| Client | `UIController`, `CarryController` (G to drop), `EffectsController` (hazard camera shake) |
+| Shared definitions | `FeedDefinitions`, `CatalystDefinitions`, `MonsterDefinitions`, `AreaDefinitions`, `RarityDefinitions`, `TrainerDefinitions`, `BillboardConfig`; `DefinitionValidation` validates cross-references; `ResourceDefinitions` is the sole resource value table |
+| Server services | `DataService` + injected `SessionStore`, `BaseService`, `ResourceService`, `CarryService`, `SpawnService`, `GuardianService`, `FeedService`, `MonsterService`, `TrainingService`, `InteractionGuard`, `ZoneGeometry`; sole bootstrap `GameBootstrap.server.luau` |
+| Client | `UIController`, `CarryController` (G to drop), `EffectsController`, `BillboardController`/`BillboardService` (world labels), `FieldController`/`FieldPresentation` (existing field presentation); native ProximityPrompts handle interaction input |
 
 Resource additions: `ResourceDefinitions`, `ResourceValidation`, `ResourceModelDefinitions`, `ResourceEffects`, `SpecialEffectDefinitions`, `FieldConfig`, `FieldRoller`, `FieldState`, server `ResourceVisualService`, and client `FieldPresentation` / `FieldController`. Rojo also maps a ServerStorage-only unit suite and a disabled server test runner.
 
@@ -65,20 +71,20 @@ Target from product context: validate **one** complete path before expanding eve
 | T-Rex guardian cycle | `GuardianService` (sleeping → disturbed → warning → hazard → cooldown) |
 | Return + feed | `FeedService` on owned base `FeedingPoint` |
 | Starter pet growth + Flesh/Flora/Mineral | `MonsterService` + `PlayerData`; starter **Proto Rex** |
-| Evolution | `EvolutionCalculator` — e.g. Fangling / Mossback / Stonehide at growth + affinity thresholds |
+| Evolution | `EvolutionCalculator` — deterministic eligible branches, persistent choices, overflow and one-stage transitions; see 4B report |
 | Training multiplier | Equipped pet `BaseMultiplier` scales Power gain |
 | Power training | `TrainingService` pad at base; Cash upgrades training level |
 | Heavier loot after Power | e.g. Bone Chunk (`PowerRequired` 50), Giant Rib (`PowerRequired` 350) |
 
 **Success condition (playtest):** New player can spawn, steal an item, survive a guardian telegraph, feed at base, evolve once, train Power, then carry something they could not carry at spawn (heavier/rarer pickup).
 
-**Verified through Roblox Studio MCP:** 84 deterministic unit cases pass; all 50,000 launch-pool tickets are exhaustively checked against exact weights. The real-cycle integration test passes 18 checks including Power rejection, duplicate/forged pickup rejection, same-ID drop/reclaim, the actual 300-second reset, ten-second transition, carried preservation and 25 fresh node IDs. A further 14 live runtime checks pass for swappable carried models, welds/slowdown, real drop expiry/refill and external destruction. All ten billboard tiers pass 85 client assertions. Client night lighting was observed. `MonsterLoopTest` and config/world validation pass. These checks do not replace a fresh-player balance/fun playthrough or a two-human multiplayer session.
+**Previous resource implementation validation (2026-10-09):** 84 deterministic unit cases, 18 real-cycle integration checks, 14 live resource checks and 85 client billboard assertions passed. These historical results are not a substitute for verifying the Phase 1 refactor. Current runs and limitations are listed in `PHASE1_RESULTS.md`. Tests do not replace a fresh-player balance/fun playthrough or a two-human multiplayer session. `MonsterLoopTest` is now opt-in under `tests/`, never automatic production startup.
 
 ## Synchronized field
 
-Rare presentation also passes 12 client checks for all three announcement/sound hooks, Divine area/item text, night lighting/restoration and Stop/Start cleanup. Nine additional VFX checks confirm aura/beacon/burst components and extended billboard distances. Fixture notifications were explicit tests, not changes to production spawn odds.
+Current Phase 2 rare presentation passes 17 client checks for announcement sizing, priority sound hooks, countdown, night lighting/restoration and Stop/Start cleanup. Nine additional VFX checks confirm Secret/Eternal/Divine aura/beacon/burst components. Fixture notifications were explicit tests, not changes to production spawn odds.
 
-One server-wide field fills 25 nodes. Every 300 seconds: clear uncarried items, cancel refill timers, reset disturbance/hazard callbacks, show ten seconds of client night lighting, then refill. Carried loot survives; its old node reservation detaches so it cannot steal a fresh node's ownership.
+One server-wide field fills 25 nodes. Per the Phase 2 request, each 300-second period has 290 normal seconds and ten resetting seconds (first transition starts at server epoch+290, refill at +300). Clear uncarried items, cancel refill timers, reset disturbance/hazard callbacks, show the top-center reset message/night hook, then refill. Carried loot survives; its old node reservation detaches so it cannot steal a fresh node's ownership. Explicit resource states are AVAILABLE, CARRIED, DROPPED, CONSUMED and DESTROYED. See `PHASE2_RESULTS.md` for current verification; Phase 1 results remain a historical snapshot.
 
 Consumption/destruction schedules a refill: Common–Rare 18s, Epic–Legendary 25s, Mythic/Cosmic 40s; chase items never refill mid-cycle. Mid-cycle rolls renormalize eligible weights below Secret. Hard-reset batches keep only their highest Secret+ per area. Divine is capped at one unconsumed record server-wide, including carried Divine to prevent later-drop collisions. No pity.
 
@@ -87,10 +93,14 @@ Drops retain GUID and node reservation, are immediately pickable, and expire aft
 ## Persistence
 
 - DataStore: `MonsterProgress_v1` via `DataService`
-- Fields: Cash, Power, equipped pet, per-species growth/affinities/mutations/rarity and `EvolutionFamilies`, `BaseUpgrades.TrainingLevel`, `DiscoveredAreas`, simple `Stats`; Floral still writes saved `Flora`
-- Failed load → session defaults; that session does not overwrite save if load never succeeded (`canSave` false)
+- Fields: Cash, Power, equipped owned-pet key, Growth/TotalGrowth/Revision/affinities/mutations/rarity and `EvolutionFamilies`, Stage/EvolutionHistory, additive EvolutionForm/EvolutionVersion/GrowthReserve/Lineage/LineageTags/PendingEvolution, `BaseUpgrades.TrainingLevel`, `DiscoveredAreas`, simple `Stats`; Floral still writes saved `Flora`. Legacy species-named ownership keys remain stable even after the current form changes.
+- Keys remain `u_<UserId>`; no reset, store rename or economy migration.
+- Failed/malformed load → read-only fallback; successful nil → writable missing/new save. Concurrent loads share one request lifecycle.
+- Serialized `UpdateAsync` uses full-record optimistic conflict checks; conflicting sessions become read-only. Unknown inventory/receipt/entitlement fields and key metadata are preserved.
+- Studio performs no production DataStore reads or writes, regardless of API-access settings. Session tests use injected fake stores.
+- Drain old servers before deploying: older `SetAsync` writers cannot participate in the new conflict protocol. A live two-server/cloud test has not been performed.
 
-No monetization / receipt code in repo today.
+No legitimate receipt/gamepass pipeline was found in the repository or active place. An unused SoilBag template's external asset-purchase script is disabled and backed up; its asset ID/model are retained. End-to-end purchase/entitlement behavior cannot be certified without the intended pipeline and a safe test environment.
 
 ## Economy (minimal)
 
@@ -102,7 +112,7 @@ No monetization / receipt code in repo today.
 
 Main conveyor acquisition, open-world gathering, expedition quests/bags/combat enemies, research tablet, NPC selling as core loop, material banking, weapons/HP combat, heavy inventory, lab/tycoon base management, per-feed/per-area bespoke server scripts.
 
-Conveyor may return later only as an optional **secondary** base convenience—not the main loop (`FEED_A_PET_CONTEXT.md` §13).
+Conveyor may return later only as an explicitly scoped **secondary** convenience—not the main loop.
 
 ## Content pipeline (current phase)
 
@@ -119,7 +129,7 @@ From product context — not settled in code/docs yet:
 - Cash’s long-term shop/upgrades beyond training pad
 - PvP theft vs contest over world spawns only
 - How many owned pets vs one displayed pet
-- Evolution UI when multiple branches qualify
+- Final styling for evolution UI (functional persistent choices implemented in 4B)
 - Special catalysts: always deterministic vs sometimes probabilistic
 - Global/server event frequency and contest rules
 
@@ -127,4 +137,4 @@ From product context — not settled in code/docs yet:
 
 ## Agent workflow
 
-Before large changes: read `FEED_A_PET_CONTEXT.md`, inspect `src/`, trace requires/remotes, prefer deleting dead architecture over layering. After substantial edits: run Play + `[MonsterLoopTest] PASS` in output, fix broken requires and dangling Studio instances after sync.
+Before large changes: read `FEED_A_PET_MASTER_CONTEXT.md` and the finalized resource specification, inspect `src/`, trace requires/remotes, and preserve saves/purchases. Run appropriate opt-in tests, inspect both Play consoles, and check for duplicate or dangling Studio instances after sync. Phase 3 replaces the old prototype guardian rules with rarity disturbance, threshold 100 and five telegraphed hazards. Existing trainer upgrade math, Cash rates and pet IDs remain preserved. The ten-tier trainer ladder is configured but not purchasable until pricing/ownership/migration rules are approved.

@@ -6,10 +6,18 @@ local Presentation = require(player.PlayerScripts.Client.FieldPresentation)
 local field = game.ReplicatedStorage.WorldFieldState
 local Config = require(game.ReplicatedStorage.Shared.FieldConfig)
 local savedPhase, savedClock, savedBrightness = field:GetAttribute("Phase"), Lighting.ClockTime, Lighting.Brightness
+local savedReset = field:GetAttribute("NextResetAt")
+local displayed = {}
 local seen, sounds, connections, passes = {}, {}, {}, 0
 local function check(ok, message) assert(ok, message) passes += 1 end
-connections[1] = Presentation.RareSpawned:Connect(function(payload) seen[payload.Rarity] = payload end)
-connections[2] = Presentation.SoundRequested:Connect(function(payload, id, volume) sounds[payload.Rarity] = {Id=id,Volume=volume} end)
+connections[1] = Presentation.RareSpawned:Connect(function(payload)
+	seen[payload.Rarity] = payload
+	task.delay(0.15,function()
+		local gui=player.PlayerGui:FindFirstChild("FieldAnnouncements")
+		if gui and gui.Frame:GetAttribute("Rarity")==payload.Rarity then displayed[payload.Rarity]=gui.Frame.UISizeConstraint.MaxSize.X end
+	end)
+end)
+connections[2] = Presentation.SoundRequested:Connect(function(payload, id, volume, priority) sounds[payload.Rarity] = {Id=id,Volume=volume,Priority=priority} end)
 script:SetAttribute("Ready",true)
 local ok, failure = xpcall(function()
 	local deadline = os.clock()+20
@@ -23,19 +31,28 @@ local ok, failure = xpcall(function()
 	local deadline2 = os.clock()+15
 	while not string.find(gui.Frame.TextLabel.Text,"Inferno Catalyst",1,true) and os.clock()<deadline2 do task.wait(0.1) end
 	check(string.find(gui.Frame.TextLabel.Text,"DIVINE ARRIVAL",1,true) and string.find(gui.Frame.TextLabel.Text,"Volcano",1,true), "Divine major announcement includes area and item")
+	task.wait(0.2)
+	check(displayed.Secret==360 and displayed.Eternal==500 and displayed.Divine==640,"Rare tiers have escalating announcement sizes")
+	check(sounds.Divine.Priority==3 and Presentation:GetStats().Priority==3,"Divine preempts lower priority announcements")
+	field:SetAttribute("NextResetAt",workspace:GetServerTimeNow()+272) task.wait(0.25)
+	check(gui.ResetCountdown.Text=="RESOURCES RESET IN 4:32","Top-center countdown uses server time")
+	field:SetAttribute("NextResetAt",savedReset)
 	-- Client-only phase fixture: no server field or resource state changes.
 	field:SetAttribute("Phase","Reset") task.wait(0.8)
 	check(math.abs(Lighting.ClockTime-20)<0.01 and math.abs(Lighting.Brightness-0.8)<0.01, "reset uses night lighting")
+	check(gui.ResetCountdown.Text=="RESOURCES RESETTING...","Reset countdown switches to transition message")
 	field:SetAttribute("Phase","Normal") task.wait(0.8)
 	check(math.abs(Lighting.ClockTime-savedClock)<0.01 and math.abs(Lighting.Brightness-savedBrightness)<0.01, "normal restores lighting")
 	Presentation:Stop()
 	check(not player.PlayerGui:FindFirstChild("FieldAnnouncements"), "Stop releases announcement GUI")
+	check(Presentation:GetStats().Connections==0 and Presentation:GetStats().Queued==0,"Stop releases timing/remote connections and queue")
 	Presentation:Start()
 	local count=0 for _, child in player.PlayerGui:GetChildren() do if child.Name=="FieldAnnouncements" then count+=1 end end
 	check(count==1, "Start recreates exactly one GUI")
 end,debug.traceback)
 for _, connection in connections do connection:Disconnect() end
 field:SetAttribute("Phase",savedPhase)
+field:SetAttribute("NextResetAt",savedReset)
 Lighting.ClockTime, Lighting.Brightness = savedClock, savedBrightness
 script:SetAttribute("Result",if ok then "PASS" else failure) script:SetAttribute("PassedChecks",passes)
 if ok then print("[FieldPresentationSmoke] PASS " .. passes .. " checks") else warn("[FieldPresentationSmoke] " .. failure) end

@@ -28,7 +28,7 @@ function State:create(node, resourceId, reason)
 	local id = self.GenerateId()
 	assert(not self.Records[id], "Duplicate resource instance ID")
 	local record = {InstanceId = id, ResourceId = resourceId, AreaId = node.AreaId,
-		NodeId = node.Id, OriginalNodeId = node.Id, Cycle = self.Cycle, State = "World", SpawnReason = reason}
+		NodeId = node.Id, OriginalNodeId = node.Id, Cycle = self.Cycle, State = "AVAILABLE", SpawnReason = reason}
 	self.Records[id] = record
 	node.RecordId, node.RespawnAt = id, nil
 	return record
@@ -43,49 +43,57 @@ function State:fill()
 	end
 end
 function State:start(now)
+	assert(self.Cycle == 0, "Field already started")
 	self.Cycle = 1
-	self.NextResetAt = now + Config.FIELD_CYCLE_SECONDS
+	self.Epoch = now
+	self.NextResetAt = now + Config.FIELD_CYCLE_SECONDS - Config.RESET_WINDOW_SECONDS
 	self:fill()
 end
 function State:beginReset(now)
 	if self.Phase == "Reset" then return false end
 	self.Phase = "Reset"
-	self.Cycle += 1
-	self.ResetEndsAt = now + Config.RESET_WINDOW_SECONDS
-	repeat self.NextResetAt += Config.FIELD_CYCLE_SECONDS until self.NextResetAt > now
+	-- Derive deadlines from the server period, not scheduler arrival time; never accumulate drift.
+	local periods = math.floor(math.max(0, now - self.NextResetAt) / Config.FIELD_CYCLE_SECONDS) + 1
+	self.Cycle += periods
+	self.ResetEndsAt = self.NextResetAt + (periods - 1) * Config.FIELD_CYCLE_SECONDS + Config.RESET_WINDOW_SECONDS
+	self.NextResetAt += periods * Config.FIELD_CYCLE_SECONDS
 	for id, record in self.Records do
-		if record.State == "Carried" then record.NodeId = nil
-		else self.Records[id] = nil end
+		if record.State == "CARRIED" then record.NodeId = nil
+		else record.State = "DESTROYED" self.Records[id] = nil end
 	end
 	for _, node in self.Nodes do node.RecordId, node.RespawnAt = nil, nil end
 	return true
 end
 function State:claim(id, userId)
-	for _, held in self.Records do if held.State == "Carried" and held.OwnerUserId == userId then return nil end end
+	for _, held in self.Records do if held.State == "CARRIED" and held.OwnerUserId == userId then return nil end end
 	local record = self.Records[id]
-	if self.Phase ~= "Normal" or not record or (record.State ~= "World" and record.State ~= "Dropped") then return nil end
+	if self.Phase ~= "Normal" or not record or (record.State ~= "AVAILABLE" and record.State ~= "DROPPED") then return nil end
 	local previous = record.State
-	record.State, record.OwnerUserId = "Carried", userId
+	record.ClaimVersion = (record.ClaimVersion or 0) + 1
+	record.State, record.OwnerUserId = "CARRIED", userId
 	return previous
 end
 function State:rollbackClaim(id, userId, previous)
 	local record = self.Records[id]
-	if record and record.State == "Carried" and record.OwnerUserId == userId then
+	if record and record.State == "CARRIED" and record.OwnerUserId == userId then
 		record.State, record.OwnerUserId = previous, nil
 	end
 end
 function State:drop(id, userId, position, now)
 	local record = self.Records[id]
-	if not record or record.State ~= "Carried" or record.OwnerUserId ~= userId then return false end
+	if not record or record.State ~= "CARRIED" or record.OwnerUserId ~= userId then return false end
 	-- Fresh resources are paused during reset, but a carried item can still be dropped safely.
-	record.State, record.OwnerUserId = "Dropped", nil
+	record.State, record.OwnerUserId = "DROPPED", nil
 	record.Position = position
 	record.DropExpiresAt = now + Config.DROPPED_DESPAWN_SECONDS
 	return true
 end
-function State:release(id, now)
+function State:release(id, now, terminalState)
 	local record = self.Records[id]
 	if not record then return false end
+	terminalState = terminalState or "DESTROYED"
+	assert(terminalState == "CONSUMED" or terminalState == "DESTROYED", "Invalid terminal resource state")
+	record.State, record.OwnerUserId = terminalState, nil
 	self.Records[id] = nil
 	local node = record.NodeId and self.Nodes[record.NodeId]
 	if node and node.RecordId == id then
@@ -96,9 +104,9 @@ function State:release(id, now)
 	return true
 end
 function State:step(now)
-	if self.Phase == "Normal" and now >= self.NextResetAt then
+	if now >= self.NextResetAt then
+		self.Phase = "Normal" -- Also reconcile a previous reset if the scheduler skipped a whole period.
 		self:beginReset(now)
-		return
 	end
 	if self.Phase == "Reset" and now >= self.ResetEndsAt then
 		self:fill()
@@ -106,7 +114,7 @@ function State:step(now)
 	end
 	local expired = {}
 	for id, record in self.Records do
-		if record.State == "Dropped" and now >= record.DropExpiresAt then table.insert(expired, id) end
+		if record.State == "DROPPED" and now >= record.DropExpiresAt then table.insert(expired, id) end
 	end
 	for _, id in expired do self:release(id, now) end
 	if self.Phase ~= "Normal" then return end
@@ -121,7 +129,8 @@ function State:validate()
 	local errors, owners, divine = {}, {}, 0
 	for id, record in self.Records do
 		if id ~= record.InstanceId then table.insert(errors, "Resource ID mismatch") end
-		if record.State == "Carried" then
+		if record.State ~= "AVAILABLE" and record.State ~= "CARRIED" and record.State ~= "DROPPED" then table.insert(errors, "Invalid active resource state") end
+		if record.State == "CARRIED" then
 			if not record.OwnerUserId or owners[record.OwnerUserId] then table.insert(errors, "Duplicate/invalid carrier") end
 			owners[record.OwnerUserId] = true
 		end

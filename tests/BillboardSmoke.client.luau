@@ -162,9 +162,16 @@ local ok, failure = xpcall(function()
 	local before = Service:GetStats().Watchers
 	Service:Stop()
 	check(Service:GetStats().Tracked == 0 and Service:GetStats().Watchers == 0, "Stop releases entries and connections")
+	check(Service:GetStats().Connections == 0, "Stop disconnects all owned connections")
 	Service:Start()
 	settle()
 	check(Service:GetStats().Watchers == before, "Restart re-discovers exactly the tagged targets")
+	local direct = create("Direct destroy", "Common", Vector3.new(0,0,10))
+	CollectionService:AddTag(direct, Config.Tag) settle()
+	local watchers = Service:GetStats().Watchers
+	Service:Destroy(direct) settle()
+	check(Service:GetStats().Watchers == watchers-1, "Direct Destroy disconnects attribute watcher")
+	direct:Destroy()
 	for index, part in fixtures do
 		local rarity = ({"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Secret"})[index]
 		Service:Create(part, {DisplayName=part.Name, Rarity=rarity, ValueText=if index==7 then "??? Growth" else "+25 Growth", NearDistance=100,
@@ -172,6 +179,8 @@ local ok, failure = xpcall(function()
 	end
 	settle()
 	-- The authoritative ladder adds Cosmic, Eternal and Divine to the established fixtures.
+	Service:Update(fixtures[1], {MaxDistance=110}) settle()
+	check(findGui(fixtures[1]).MaxDistance == 110, "Explicit MaxDistance reaches BillboardGui")
 	for index, rarity in {"Cosmic", "Eternal", "Divine"} do
 		local part = create(rarity .. " Probe", rarity, Vector3.new((index - 2) * 36, -20, 0))
 		Service:Update(part, {NearDistance=100, FarDistance=600})

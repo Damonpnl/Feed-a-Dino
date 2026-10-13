@@ -1,0 +1,204 @@
+{
+  "checked": "2026-10-10",
+  "files": 46,
+  "edges": 117,
+  "cycles": [],
+  "unparsed": [],
+  "graph": {
+    "StarterPlayer.StarterPlayerScripts.Client.BillboardController": [
+      "StarterPlayer.StarterPlayerScripts.Client.BillboardService"
+    ],
+    "StarterPlayer.StarterPlayerScripts.Client.BillboardService": [
+      "ReplicatedStorage.Shared.BillboardConfig",
+      "ReplicatedStorage.Shared.BillboardData",
+      "StarterPlayer.StarterPlayerScripts.Client.BillboardView"
+    ],
+    "StarterPlayer.StarterPlayerScripts.Client.BillboardView": [
+      "ReplicatedStorage.Shared.BillboardConfig",
+      "ReplicatedStorage.Shared.BillboardData"
+    ],
+    "StarterPlayer.StarterPlayerScripts.Client.CarryController": [],
+    "StarterPlayer.StarterPlayerScripts.Client.EffectsController": [],
+    "StarterPlayer.StarterPlayerScripts.Client.FieldController": [
+      "StarterPlayer.StarterPlayerScripts.Client.FieldPresentation"
+    ],
+    "StarterPlayer.StarterPlayerScripts.Client.FieldPresentation": [
+      "ReplicatedStorage.Shared.FieldConfig",
+      "ReplicatedStorage.Shared.RarityDefinitions"
+    ],
+    "StarterPlayer.StarterPlayerScripts.Client.UIController": [],
+    "ServerScriptService.Server.BaseService": [
+      "ServerScriptService.Server.DataService",
+      "ServerScriptService.Server.MonsterService"
+    ],
+    "ServerScriptService.Server.BillboardMetadataService": [
+      "ReplicatedStorage.Shared.BillboardConfig",
+      "ReplicatedStorage.Shared.BillboardData"
+    ],
+    "ServerScriptService.Server.CarryService": [
+      "ServerScriptService.Server.DataService",
+      "ReplicatedStorage.Shared.ResourceCatalog",
+      "ReplicatedStorage.Shared.BillboardData",
+      "ServerScriptService.Server.BillboardMetadataService",
+      "ServerScriptService.Server.ResourceVisualService",
+      "ServerScriptService.Server.ResourceService",
+      "ServerScriptService.Server.InteractionGuard"
+    ],
+    "ServerScriptService.Server.DataService": [
+      "ReplicatedStorage.Shared.PlayerData",
+      "ServerScriptService.Server.SessionStore"
+    ],
+    "ServerScriptService.Server.FeedService": [
+      "ServerScriptService.Server.DataService",
+      "ReplicatedStorage.Shared.EvolutionCalculator",
+      "ReplicatedStorage.Shared.MonsterDefinitions",
+      "ServerScriptService.Server.MonsterService",
+      "ReplicatedStorage.Shared.ResourceCatalog",
+      "ReplicatedStorage.Shared.ResourceEffects",
+      "ReplicatedStorage.Shared.PlayerData",
+      "ServerScriptService.Server.CarryService",
+      "ServerScriptService.Server.ResourceService",
+      "ServerScriptService.Server.InteractionGuard"
+    ],
+    "ServerScriptService.Server.GameBootstrap": [
+      "ReplicatedStorage.Shared.DefinitionValidation",
+      "ServerScriptService.Server.BaseService",
+      "ServerScriptService.Server.CarryService",
+      "ServerScriptService.Server.DataService",
+      "ServerScriptService.Server.FeedService",
+      "ServerScriptService.Server.GuardianService",
+      "ServerScriptService.Server.MonsterService",
+      "ServerScriptService.Server.SpawnService",
+      "ServerScriptService.Server.TrainingService"
+    ],
+    "ServerScriptService.Server.GuardianService": [
+      "ReplicatedStorage.Shared.AreaDefinitions",
+      "ServerScriptService.Server.DataService",
+      "ServerScriptService.Server.ZoneGeometry",
+      "ServerScriptService.Server.BillboardMetadataService",
+      "ServerScriptService.Server.CarryService",
+      "ServerScriptService.Server.ResourceService"
+    ],
+    "ServerScriptService.Server.InteractionGuard": [],
+    "ServerScriptService.Server.MonsterService": [
+      "ServerScriptService.Server.DataService",
+      "ServerScriptService.Server.BillboardMetadataService",
+      "ReplicatedStorage.Shared.MonsterDefinitions",
+      "ReplicatedStorage.Shared.PlayerData"
+    ],
+    "ServerScriptService.Server.ResourceService": [
+      "ReplicatedStorage.Shared.FieldState",
+      "ReplicatedStorage.Shared.ResourceDefinitions",
+      "ReplicatedStorage.Shared.AreaDefinitions",
+      "ServerScriptService.Server.DataService"
+    ],
+    "ServerScriptService.Server.ResourceVisualService": [
+      "ReplicatedStorage.Shared.ResourceModelDefinitions",
+      "ReplicatedStorage.Shared.RarityDefinitions",
+      "ReplicatedStorage.Shared.FieldConfig"
+    ],
+    "ServerScriptService.Server.SessionStore": [
+      "ReplicatedStorage.Shared.PlayerData"
+    ],
+    "ServerScriptService.Server.SpawnService": [
+      "ReplicatedStorage.Shared.AreaDefinitions",
+      "ReplicatedStorage.Shared.ResourceDefinitions",
+      "ReplicatedStorage.Shared.ResourceValidation",
+      "ServerScriptService.Server.ResourceService",
+      "ServerScriptService.Server.InteractionGuard",
+      "ReplicatedStorage.Shared.FieldConfig",
+      "ReplicatedStorage.Shared.BillboardData",
+      "ServerScriptService.Server.BillboardMetadataService",
+      "ServerScriptService.Server.ResourceVisualService",
+      "ServerScriptService.Server.CarryService",
+      "ServerScriptService.Server.GuardianService",
+      "ServerScriptService.Server.DataService"
+    ],
+    "ServerScriptService.Server.TrainingService": [
+      "ServerScriptService.Server.DataService",
+      "ServerScriptService.Server.MonsterService",
+      "ReplicatedStorage.Shared.TrainerDefinitions",
+      "ServerScriptService.Server.InteractionGuard"
+    ],
+    "ServerScriptService.Server.ZoneGeometry": [
+      "ReplicatedStorage.Shared.AreaDefinitions"
+    ],
+    "ReplicatedStorage.Shared.AreaDefinitions": [
+      "ReplicatedStorage.Shared.ResourceDefinitions"
+    ],
+    "ReplicatedStorage.Shared.BillboardConfig": [],
+    "ReplicatedStorage.Shared.BillboardData": [
+      "ReplicatedStorage.Shared.BillboardConfig",
+      "ReplicatedStorage.Shared.RarityStyles",
+      "ReplicatedStorage.Shared.ModifierStyles",
+      "ReplicatedStorage.Shared.FieldConfig",
+      "ReplicatedStorage.Shared.SpecialEffectDefinitions"
+    ],
+    "ReplicatedStorage.Shared.CatalystDefinitions": [
+      "ReplicatedStorage.Shared.ResourceDefinitions",
+      "ReplicatedStorage.Shared.ResourceTypes"
+    ],
+    "ReplicatedStorage.Shared.DefinitionValidation": [
+      "ReplicatedStorage.Shared.ResourceValidation",
+      "ReplicatedStorage.Shared.ResourceDefinitions",
+      "ReplicatedStorage.Shared.MonsterDefinitions",
+      "ReplicatedStorage.Shared.TrainerDefinitions",
+      "ReplicatedStorage.Shared.RarityDefinitions",
+      "ReplicatedStorage.Shared.SpecialEffectDefinitions",
+      "ReplicatedStorage.Shared.BillboardConfig",
+      "ReplicatedStorage.Shared.RarityStyles"
+    ],
+    "ReplicatedStorage.Shared.EvolutionCalculator": [
+      "ReplicatedStorage.Shared.MonsterDefinitions"
+    ],
+    "ReplicatedStorage.Shared.FeedDefinitions": [
+      "ReplicatedStorage.Shared.ResourceDefinitions",
+      "ReplicatedStorage.Shared.ResourceTypes"
+    ],
+    "ReplicatedStorage.Shared.FieldConfig": [],
+    "ReplicatedStorage.Shared.FieldRoller": [
+      "ReplicatedStorage.Shared.ResourceDefinitions",
+      "ReplicatedStorage.Shared.RarityDefinitions"
+    ],
+    "ReplicatedStorage.Shared.FieldState": [
+      "ReplicatedStorage.Shared.FieldConfig",
+      "ReplicatedStorage.Shared.AreaDefinitions",
+      "ReplicatedStorage.Shared.ResourceDefinitions",
+      "ReplicatedStorage.Shared.FieldRoller"
+    ],
+    "ReplicatedStorage.Shared.ModifierStyles": [],
+    "ReplicatedStorage.Shared.MonsterDefinitions": [],
+    "ReplicatedStorage.Shared.PlayerData": [],
+    "ReplicatedStorage.Shared.RarityDefinitions": [],
+    "ReplicatedStorage.Shared.RarityStyles": [
+      "ReplicatedStorage.Shared.RarityDefinitions"
+    ],
+    "ReplicatedStorage.Shared.ResourceCatalog": [
+      "ReplicatedStorage.Shared.CatalystDefinitions",
+      "ReplicatedStorage.Shared.FeedDefinitions",
+      "ReplicatedStorage.Shared.ResourceTypes",
+      "ReplicatedStorage.Shared.ResourceDefinitions"
+    ],
+    "ReplicatedStorage.Shared.ResourceDefinitions": [
+      "ReplicatedStorage.Shared.ResourceTypes"
+    ],
+    "ReplicatedStorage.Shared.ResourceEffects": [
+      "ReplicatedStorage.Shared.SpecialEffectDefinitions"
+    ],
+    "ReplicatedStorage.Shared.ResourceModelDefinitions": [
+      "ReplicatedStorage.Shared.ResourceDefinitions",
+      "ReplicatedStorage.Shared.RarityDefinitions"
+    ],
+    "ReplicatedStorage.Shared.ResourceTypes": [],
+    "ReplicatedStorage.Shared.ResourceValidation": [
+      "ReplicatedStorage.Shared.AreaDefinitions",
+      "ReplicatedStorage.Shared.ResourceDefinitions",
+      "ReplicatedStorage.Shared.RarityDefinitions",
+      "ReplicatedStorage.Shared.ResourceModelDefinitions",
+      "ReplicatedStorage.Shared.SpecialEffectDefinitions",
+      "ReplicatedStorage.Shared.FieldConfig"
+    ],
+    "ReplicatedStorage.Shared.SpecialEffectDefinitions": [],
+    "ReplicatedStorage.Shared.TrainerDefinitions": []
+  }
+}

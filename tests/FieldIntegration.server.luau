@@ -10,7 +10,7 @@ local function check(ok, message) assert(ok, message) passes += 1 end
 local originalFrame, originalPower
 local function selectRecord(area)
 	for id, record in Spawn.getSnapshot().Records do
-		if record.AreaId == area and record.State == "World" then return id, record end
+		if record.AreaId == area and record.State == "AVAILABLE" then return id, record end
 	end
 	error("Missing world resource in " .. area)
 end
@@ -31,25 +31,33 @@ local ok, failure = xpcall(function()
 	local id, record = selectRecord("Swamp")
 	goTo(id) Data.get(player).Power = 0
 	check(not Spawn.pickup(player,id), "Insufficient Power must reject pickup")
-	check(Spawn.getRecord(id).State == "World", "Rejected pickup must preserve the record")
+	check(Spawn.getRecord(id).State == "AVAILABLE", "Rejected pickup must preserve the record")
 	Data.get(player).Power = Resources.get(record.ResourceId).PowerRequired
+	task.wait(0.16) -- Respect the server request guard after the intentional rejected request.
 	check(Spawn.pickup(player,id), "Valid pickup must succeed")
 	check(not Spawn.pickup(player,id), "Duplicate pickup must fail")
 	check(not Carry.give(player,"RawMeat","Grasslands","forged-id"), "Forged record must fail")
 	local item = Carry.drop(player)
 	check(Spawn.returnToWorld(item.areaId,item.resourceId,item.token,player.Character:GetPivot().Position,player.UserId), "Drop must return the same record")
-	check(Spawn.getRecord(id).State == "Dropped", "Dropped state must be authoritative")
+	check(Spawn.getRecord(id).State == "DROPPED", "Dropped state must be authoritative")
 	check(not Spawn.returnToWorld(item.areaId,item.resourceId,item.token,Vector3.zero,player.UserId), "Duplicate drop must fail")
 	check(#Spawn.validate() == 0, "Drop must not duplicate a world ID")
-	goTo(id) check(Spawn.pickup(player,id), "Dropped item must be pickable")
+	goTo(id) task.wait(0.16) check(Spawn.pickup(player,id), "Dropped item must be pickable")
 	local carried = Carry.get(player)
 	local originalNode = Spawn.getRecord(id).NodeId
 	player.Character:PivotTo(originalFrame)
-	script:SetAttribute("Progress", "Waiting for the real 300-second reset")
+	script:SetAttribute("Progress", "Waiting for the final ten seconds of the real 300-second period")
 	local initialCycle = Spawn.getSnapshot().Cycle
-	while Spawn.getSnapshot().Cycle == initialCycle do task.wait(0.1) end
+	local deadline=Spawn.getSnapshot().NextResetAt
+	while Spawn.getSnapshot().Cycle == initialCycle do
+		if workspace:GetServerTimeNow()>=deadline then
+			check(not Spawn.pickup(player,id), "Deadline interaction reconciles reset before accepting pickup")
+		end
+		task.wait(0.01)
+	end
 	check(Spawn.getSnapshot().Phase == "Reset", "Reset phase must publish")
-	check(Spawn.getRecord(id).State == "Carried" and Carry.get(player).token == carried.token, "Reset must preserve carried loot")
+	check(Spawn.getRecord(id).State == "CARRIED" and Carry.get(player).token == carried.token, "Reset must preserve carried loot")
+	check(not Spawn.pickup(player,id), "Reset interaction replay rejected")
 	check(#workspace.GeneratedGameplay.Resources:GetChildren() == 0, "Reset must clear uncarried world resources")
 	script:SetAttribute("Progress", "Observed reset; waiting for ten-second transition")
 	while Spawn.getSnapshot().Phase == "Reset" do task.wait(0.1) end

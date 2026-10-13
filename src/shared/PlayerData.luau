@@ -1,16 +1,23 @@
 --!strict
 
 local PlayerData = {}
+local Evolution = require(script.Parent.EvolutionCalculator)
 
 export type MonsterRecord = {
 	Species: string,
 	Growth: number,
+	TotalGrowth: number,
+	Revision: number,
+	Stage: number,
+	EvolutionHistory: {any},
 	Flesh: number,
 	Flora: number,
 	Mineral: number,
 	Mutations: { string },
 	Rarity: string,
 	EvolutionFamilies: { [string]: boolean },
+	PetId: string?, EvolutionForm: string?, EvolutionVersion: number?, GrowthReserve: number?,
+	Lineage: string?, LineageTags: {[string]: boolean}?, PendingEvolution: any?,
 }
 
 export type SaveData = {
@@ -31,10 +38,22 @@ export type SaveData = {
 
 local STARTER = "ProtoRex"
 
+-- Preserve fields owned by other versions/systems, including inventories and entitlements.
+function PlayerData.copy(value: any): any
+	if type(value) ~= "table" then return value end
+	local result = {}
+	for key, item in value do result[key] = PlayerData.copy(item) end
+	return result
+end
+
 function PlayerData.createMonster(species: string, rarity: string?): MonsterRecord
-	return {
+	local record = {
 		Species = species,
 		Growth = 0,
+		TotalGrowth = 0,
+		Revision = 0,
+		Stage = 0,
+		EvolutionHistory = {},
 		Flesh = 0,
 		Flora = 0,
 		Mineral = 0,
@@ -42,6 +61,8 @@ function PlayerData.createMonster(species: string, rarity: string?): MonsterReco
 		EvolutionFamilies = {},
 		Rarity = if rarity ~= nil then rarity else "Common",
 	}
+	Evolution.initialize(record,species)
+	return record
 end
 
 function PlayerData.default(): SaveData
@@ -78,6 +99,11 @@ function PlayerData.normalize(raw: any): SaveData
 	if typeof(raw) ~= "table" then
 		return data
 	end
+	for key, value in raw do (data :: any)[key] = PlayerData.copy(value) end
+	data.BaseUpgrades = if type(raw.BaseUpgrades) == "table" then PlayerData.copy(raw.BaseUpgrades) else {TrainingLevel=0}
+	data.Stats = if type(raw.Stats) == "table" then PlayerData.copy(raw.Stats) else {Feeds=0,Evolutions=0,Trainings=0}
+	data.DiscoveredAreas = if type(raw.DiscoveredAreas) == "table" then PlayerData.copy(raw.DiscoveredAreas) else {Grasslands=true}
+	data.EquippedMonster = STARTER
 
 	data.Cash = math.max(0, finiteNumber(raw.Cash, 0))
 	data.Power = math.max(0, finiteNumber(raw.Power, 0))
@@ -99,8 +125,13 @@ function PlayerData.normalize(raw: any): SaveData
 					end
 				end
 				data.Monsters[species] = {
-					Species = species,
+					Species = if type(record.Species)=="string" then record.Species else species,
 					Growth = math.max(0, finiteNumber(record.Growth, 0)),
+					-- Historical pre-migration Growth spent on evolution is unknowable.
+					TotalGrowth = math.max(0, finiteNumber(record.Growth, 0), finiteNumber(record.TotalGrowth, 0)),
+					Revision = math.max(0, math.floor(finiteNumber(record.Revision, 0))),
+					Stage = math.max(0, math.floor(finiteNumber(record.Stage, 0))),
+					EvolutionHistory = if type(record.EvolutionHistory) == "table" then PlayerData.copy(record.EvolutionHistory) else {},
 					Flesh = math.max(0, finiteNumber(record.Flesh, 0)),
 					Flora = math.max(0, finiteNumber(record.Flora, 0)),
 					Mineral = math.max(0, finiteNumber(record.Mineral, 0)),
@@ -108,18 +139,24 @@ function PlayerData.normalize(raw: any): SaveData
 					EvolutionFamilies = {},
 					Rarity = if typeof(record.Rarity) == "string" then record.Rarity else "Common",
 				}
+				for key, value in record do
+					if (data.Monsters[species] :: any)[key] == nil then (data.Monsters[species] :: any)[key] = PlayerData.copy(value) end
+				end
 				if typeof(record.EvolutionFamilies) == "table" then
 					for family, unlocked in record.EvolutionFamilies do
 						if typeof(family) == "string" and unlocked == true then data.Monsters[species].EvolutionFamilies[family] = true end
 					end
 				end
+				Evolution.initialize(data.Monsters[species],species)
 			end
 		end
 	end
 
 	if data.Monsters[data.EquippedMonster] == nil then
 		data.EquippedMonster = STARTER
-		data.Monsters[STARTER] = PlayerData.createMonster(STARTER, "Common")
+		if data.Monsters[STARTER] == nil then
+			data.Monsters[STARTER] = PlayerData.createMonster(STARTER, "Common")
+		end
 	end
 
 	if typeof(raw.BaseUpgrades) == "table" then

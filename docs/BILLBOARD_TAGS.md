@@ -60,8 +60,9 @@ connection:Disconnect()
 `Appeared` and `Disappeared` fire on visibility transitions, including distance
 changes; they are not limited to the first world spawn. `Stop()` disconnects
 watchers and the manager, destroys its UI and exit anchors, and supports a later
-`Start()`. `GetStats()` exposes tracked, visible, animated, retiring, and watcher
-counts. Call it from a normal game LocalScript; MCP execution can use a separate
+`Start()`. Direct `Destroy(target)` also disconnects that target's attribute watcher.
+`GetStats()` exposes tracked, visible, animated, retiring, watcher and owned-connection
+counts (zero connections after Stop). Call it from a normal game LocalScript; MCP execution can use a separate
 ModuleScript cache from the running game.
 
 ## Configuration
@@ -76,7 +77,8 @@ ModuleScript cache from the running game.
 - `Shared/BillboardConfig`: sizes, timings, update rates, budgets and presets.
   Feed is full-detail through 70 studs and reduced-detail through 110; Catalyst,
   Monster, Guardian, WorldDrop and Event have their own ranges. Override with
-  `NearDistance` and `FarDistance` in the options.
+  `NearDistance` and `FarDistance` in the options. `MaxDistance` is an explicit hard
+  far-distance override and updates BillboardGui.MaxDistance; near detail is clamped to it.
 
 Fixed pixel dimensions and a 0.72–1.0 distance scale prevent far-away growth.
 An empty modifier hides the badge instead of substituting a rarity word.
@@ -108,6 +110,6 @@ under PlayerScripts to exercise visual tiers, metadata discovery/updates,
 modifier precedence, near/medium/far/behind-camera transitions, fades,
 destruction and streaming cleanup, burst budgets, and Stop/Start cleanup.
 It reports `Result` and `PassedAssertions` attributes and prints its result.
-On success it reports 85 passing assertions and leaves a ten-rarity showcase;
+On success it reports 88 passing assertions and leaves a ten-rarity showcase;
 set its `Cleanup` attribute to
 true to restore the camera and remove fixtures. Stop play after testing.

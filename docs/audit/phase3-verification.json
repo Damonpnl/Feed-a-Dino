@@ -1,0 +1,42 @@
+{
+  "verifiedOn": "2026-10-11",
+  "phase": 3,
+  "status": "PASSED",
+  "studioId": "4bfc5802-0955-4c58-bbb1-55f9acbd71f5",
+  "placeId": 104154372052853,
+  "finalMode": "Edit",
+  "tests": {
+    "unitCases": {"run": 149, "passed": 149, "failed": 0},
+    "singlePlayerGameplayChecks": 175,
+    "pairedClientPresentationChecks": 10,
+    "actualTwoClientMultiplayerChecks": 26,
+    "clientStreamingAndCleanupChecks": 43,
+    "attachmentRollbackChecks": 8,
+    "realFieldCycleRegressionChecks": 20,
+    "liveResourceRuntimeRegressionChecks": 14,
+    "networkDeathDisconnectRegressionChecks": 14
+  },
+  "finalInspection": {
+    "sourceFilesCompared": 63,
+    "sourceMismatches": [],
+    "sourceComparison": "Normalized UTF-8 byte length and DJB2 fingerprint",
+    "duplicateScriptPaths": 0,
+    "identicalDuplicateModulesRemoved": 5,
+    "temporaryTestScripts": [],
+    "baseParts": 1412,
+    "geometryDigest": 1212267917,
+    "geometryMatchesPhase1": true,
+    "nodes": 25,
+    "definitionErrors": 0,
+    "unitTestRunnerDisabled": true,
+    "productionDataStoreRequests": false
+  },
+  "acceptanceCriteria": {"passed": 17, "failed": 0, "blocked": 0, "notTested": 0},
+  "limits": [
+    "Automated two-client Studio testing is not two-human or production load testing.",
+    "Final animation, model and audio assets remain placeholders/hooks.",
+    "Mobile/gamepad hardware play and broad character-physics anti-cheat not tested.",
+    "Pre-existing purchase infrastructure and trainer pricing/migration limitations remain."
+  ],
+  "phase4Started": false
+}
