@@ -1,4 +1,9 @@
 --!strict
 local Presentation = require(script.Parent.GuardianPresentation)
+local CursePresentation = require(script.Parent.CarryCursePresentation)
 Presentation.Start()
-script.Destroying:Connect(Presentation.Stop)
+CursePresentation.Start()
+script.Destroying:Connect(function()
+	Presentation.Stop()
+	CursePresentation.Stop()
+end)

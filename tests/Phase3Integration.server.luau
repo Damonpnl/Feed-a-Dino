@@ -47,7 +47,9 @@ local ok,failure=xpcall(function()
 	local visual=player.Character:FindFirstChild("CarriedResource")
 	check(visual and visual:GetAttribute("ResourceInstanceId")==id and not physical(id),"One attached visual and same GUID")
 	check(visual.PrimaryPart:FindFirstChildOfClass("WeldConstraint") and not visual.PrimaryPart.Anchored,"Visual welded and unanchored")
-	check(math.abs(player.Character.Humanoid.WalkSpeed-16*(1-def.CarrySlowdown))<0.001,"Configured carry speed")
+	local applied=player:GetAttribute("CarrySlowdown")
+	check(applied>=def.CarrySlowdown-1e-4 and applied<=require(Shared.CarryDebuff).MaxTotal+1e-4,"Curse slowdown stays bounded")
+	check(math.abs(player.Character.Humanoid.WalkSpeed-16*(1-applied))<0.001,"Configured carry speed")
 	check(player:GetAttribute("CarriedRarity")==def.Rarity and player:GetAttribute("CarriedInstanceId")==id,"Carry HUD attributes")
 	player:SetAttribute("Phase3UIStage","Carrying") task.wait(0.5)
 	check(not Guardian.onPickup(player,id,Resource.getRecord(id).ClaimVersion),"Repeated acquisition event rejected")
@@ -66,15 +68,19 @@ local ok,failure=xpcall(function()
 		local token=available(area.Id)
 		script:SetAttribute("Progress",area.Id.." hazard")
 		local activation=Guardian.getSnapshot(area.Id).Activation
-		-- Valid acquisitions of the same recoverable GUID accumulate independently.
-		for _=1,15 do
-			check(acquire(token),area.Id.." acquisition")
-			if Guardian.getSnapshot(area.Id).State=="WARNING" then break end
-			check(drop(),"Build disturbance via real drop/recovery")
-		end
+		check(acquire(token),area.Id.." acquisition")
+		check(Guardian.getSnapshot(area.Id).State~="SLEEPING" and Guardian.getSnapshot(area.Id).Disturbance==0,area.Id.." immediate wake without a meter")
+		check(waitFor(function()
+			local state=Guardian.getSnapshot(area.Id).State
+			return state=="WARNING" or state=="HAZARD"
+		end,35),area.Id.." pursuit reaches telegraph")
 		local warning=Guardian.getSnapshot(area.Id)
-		check(warning.State=="WARNING" and warning.Activation==activation+1,area.Id.." one awakening")
-		check(warning.Deadline-workspace:GetServerTimeNow()<=c.Warning+0.05 and warning.Deadline-workspace:GetServerTimeNow()>c.Warning-0.2,"Warning duration")
+		check(warning.State=="WARNING" or warning.State=="HAZARD","Telegraph or attack is active")
+		check(warning.Activation==activation+1,area.Id.." one awakening")
+		if warning.State=="WARNING" then
+			local remaining=warning.Deadline-workspace:GetServerTimeNow()
+			check(remaining>0 and remaining<=c.Warning+0.05,"Warning duration")
+		end
 		local model=workspace.GeneratedGameplay.Guardians:FindFirstChild(area.Guardian)
 		local frame,size=Geometry.visual(c,warning.Frame,1,true)
 		check(model.Telegraph.Size==size and (model.Telegraph.Position-frame.Position).Magnitude<0.001,"Telegraph matches authoritative geometry")
@@ -88,9 +94,10 @@ local ok,failure=xpcall(function()
 		-- Reclaim during the SAME active window: this player must not be processed twice.
 		check(acquire(token),"Recovery during hazard")
 		root.CFrame=warning.Frame*CFrame.new(0,3,0)
-		check(waitFor(function() return Guardian.getSnapshot(area.Id).State=="COOLDOWN" end,3),"Hazard reaches cooldown")
+		check(waitFor(function() return Guardian.getSnapshot(area.Id).State=="COOLDOWN" or Guardian.getSnapshot(area.Id).State=="PURSUING" or Guardian.getSnapshot(area.Id).State=="RETURNING" end,8),"Hazard reaches recovery")
 		check(Carry.get(player) and Carry.get(player).token==token,"Hit set prevents duplicate consequence after recovery")
-		check(waitFor(function() return Guardian.getSnapshot(area.Id).State=="SLEEPING" end,c.Cooldown+1),"Returns to sleeping")
+		check(drop(),"Carrier drops after the attack window")
+		check(waitFor(function() return Guardian.getSnapshot(area.Id).State=="SLEEPING" end,20),"Returns to sleeping after the carrier is clear")
 		check(Guardian.getSnapshot(area.Id).Disturbance==0,"Post-attack baseline restored")
 		check(#Spawn.validate()==0,"No duplicate/orphan records")
 		drop()
@@ -98,11 +105,19 @@ local ok,failure=xpcall(function()
 	-- A real outside-footprint carrier retains the item through a full attack.
 	Guardian.resetAll()
 	local token=available("Grasslands")
-	for _=1,15 do assert(acquire(token)) if Guardian.getSnapshot("Grasslands").State=="WARNING" then break end drop() end
+	check(acquire(token),"Outside-footprint acquisition")
+	check(waitFor(function()
+		local state=Guardian.getSnapshot("Grasslands").State
+		return state=="WARNING" or state=="HAZARD"
+	end,35),"Outside test reaches an attack")
 	local warning=Guardian.getSnapshot("Grasslands")
 	root.CFrame=warning.Frame*CFrame.new(0,3,35)
-	check(waitFor(function() return Guardian.getSnapshot("Grasslands").State=="COOLDOWN" end,4),"Outside test attack completes")
+	check(waitFor(function()
+		local state=Guardian.getSnapshot("Grasslands").State
+		return state=="COOLDOWN" or state=="RETURNING" or state=="PURSUING" or state=="SLEEPING"
+	end,8),"Outside test attack completes")
 	check(Carry.get(player) and Carry.get(player).token==token,"Outside carrier keeps resource")
+	drop()
 	Guardian.resetAll()
 	-- Character reset resolves the old session; explicitly replay its stale callback.
 	local oldCharacter=player.Character
@@ -111,6 +126,8 @@ local ok,failure=xpcall(function()
 	check(waitFor(function() return not Carry.get(player) and player.Character~=oldCharacter end,5),"Character reset clears old carry")
 	check(Resource.getRecord(token) and Resource.getRecord(token).State=="DROPPED","Reset follows drop policy")
 	root=player.Character:WaitForChild("HumanoidRootPart") root.Anchored=true
+	-- Spawn placement can still move a just-loaded character; teleporting earlier races it.
+	task.wait(0.5)
 	check(acquire(token),"New character recovers drop")
 	check(not Carry.forceDrop(player,oldCharacter,"StaleDeath"),"Old character callback cannot affect new session")
 	check(Carry.get(player) and Carry.get(player).token==token,"New carry intact after stale callback")

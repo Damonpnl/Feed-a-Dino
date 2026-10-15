@@ -1,43 +1,106 @@
 --!nonstrict
--- Deterministic encounter state. The server adapter supplies time and acquisition identity.
+-- Deterministic encounter state. The server adapter supplies time, targets, and movement.
 local Config = require(script.Parent.GuardianConfig)
+local Chase = require(script.Parent.GuardianChase)
 local State = {}
 State.__index = State
-State.Transitions = {SLEEPING={DISTURBED=true}, DISTURBED={WARNING=true}, WARNING={HAZARD=true}, HAZARD={COOLDOWN=true}, COOLDOWN={SLEEPING=true}}
+State.Transitions = {
+	SLEEPING = { WAKING = true },
+	WAKING = { PURSUING = true },
+	PURSUING = { WARNING = true, RETURNING = true },
+	WARNING = { HAZARD = true },
+	HAZARD = { COOLDOWN = true },
+	COOLDOWN = { PURSUING = true, RETURNING = true },
+	RETURNING = { SLEEPING = true, PURSUING = true },
+}
 function State.new(config)
-	return setmetatable({Config=config, State="SLEEPING", Disturbance=Config.Baseline, Activation=0, Deadline=nil, HazardStart=nil},State)
+	return setmetatable({
+		Config = config, State = "SLEEPING", Disturbance = Config.Baseline,
+		Activation = 0, Deadline = nil, HazardStart = nil, Rarity = nil,
+	}, State)
 end
 function State:transition(nextState, at, emit)
 	assert(State.Transitions[self.State][nextState], "Illegal guardian transition")
 	self.State = nextState
-	if nextState=="WARNING" then self.Activation+=1 self.Deadline=at+self.Config.Warning
-	elseif nextState=="HAZARD" then self.HazardStart=at self.Deadline=at+self.Config.Active
-	elseif nextState=="COOLDOWN" then self.Deadline=at+self.Config.Cooldown
-	elseif nextState=="SLEEPING" then self.Deadline=nil self.Disturbance=Config.Baseline end
-	if emit then emit(nextState,at) end
+	local rarity = self.Rarity or "Common"
+	if nextState == "WAKING" then
+		self.Activation += 1
+		self.Deadline = at + Chase.Timing.Wake
+	elseif nextState == "PURSUING" then
+		self.Deadline = at + Chase.attackDelay(rarity)
+	elseif nextState == "WARNING" then
+		self.Deadline = at + self.Config.Warning
+	elseif nextState == "HAZARD" then
+		self.HazardStart = at
+		self.Deadline = at + self.Config.Active
+	elseif nextState == "COOLDOWN" then
+		self.Deadline = at + Chase.recovery(self.Config.Cooldown, rarity)
+	elseif nextState == "RETURNING" then
+		self.Deadline = at + Chase.Timing.ReturnDuration
+	elseif nextState == "SLEEPING" then
+		self.Deadline = nil
+		self.HazardStart = nil
+		self.Rarity = nil
+		self.Disturbance = Config.Baseline
+	end
+	if emit then emit(nextState, at) end
 end
 function State:pickup(rarity, now, emit)
-	local amount = Config.Disturbance[rarity]
-	if not amount and not Config.Immediate[rarity] then return false end
-	if self.State~="SLEEPING" and self.State~="DISTURBED" then return false end
-	self.Disturbance = if Config.Immediate[rarity] then Config.Threshold else math.min(Config.Threshold,self.Disturbance+amount)
-	if self.State=="SLEEPING" then self:transition("DISTURBED",now,emit) end
-	if self.Disturbance>=Config.Threshold then self:transition("WARNING",now,emit) end
+	local chosen = Chase.stronger(self.Rarity, rarity)
+	if not chosen then return false end
+	self.Rarity = chosen
+	-- Any known rarity wakes a sleeper. Active attacks are not restarted.
+	if self.State == "SLEEPING" then
+		self:transition("WAKING", now, emit)
+	elseif self.State == "RETURNING" then
+		self:transition("PURSUING", now, emit)
+	end
 	return true
 end
-function State:step(now, emit, sample)
-	-- Process swept contact before leaving HAZARD, even if an entire window elapsed
-	-- between server frames. Never extend a hazard because a frame arrived late.
-	if self.State=="WARNING" and now>=self.Deadline then self:transition("HAZARD",self.Deadline,emit) end
-	if self.State=="HAZARD" then
-		if sample then sample(self.HazardStart, math.min(now,self.Deadline)) end
-		if now>=self.Deadline then self:transition("COOLDOWN",self.Deadline,emit) end
+function State:step(now, emit, sample, context)
+	context = context or {}
+	local attacked = false
+	for _ = 1, 8 do
+		if self.State == "WAKING" and now >= self.Deadline then
+			self:transition("PURSUING", self.Deadline, emit)
+		elseif self.State == "PURSUING" then
+			if context.retreat then
+				self:transition("RETURNING", now, emit)
+			elseif context.attack or (context.attack == nil and now >= self.Deadline) then
+				if attacked then break end
+				self:transition("WARNING", if context.attack then now else self.Deadline, emit)
+			else
+				break
+			end
+		elseif self.State == "WARNING" and now >= self.Deadline then
+			self:transition("HAZARD", self.Deadline, emit)
+		elseif self.State == "HAZARD" then
+			if sample then sample(self.HazardStart, math.min(now, self.Deadline)) end
+			if now >= self.Deadline then
+				attacked = true
+				self:transition("COOLDOWN", self.Deadline, emit)
+			else
+				break
+			end
+		elseif self.State == "COOLDOWN" and now >= self.Deadline then
+			if context.pursue and not context.retreat then
+				self:transition("PURSUING", self.Deadline, emit)
+			else
+				self:transition("RETURNING", self.Deadline, emit)
+			end
+		elseif self.State == "RETURNING" and (context.home or now >= self.Deadline) then
+			self:transition("SLEEPING", if context.home then now else self.Deadline, emit)
+		else
+			break
+		end
 	end
-	if self.State=="COOLDOWN" and now>=self.Deadline then self:transition("SLEEPING",self.Deadline,emit) end
 end
 function State:reset()
-	self.State="SLEEPING" self.Disturbance=Config.Baseline self.Deadline=nil self.HazardStart=nil
-	-- Generation also invalidates client hooks and active hit sets.
-	self.Activation+=1
+	self.State = "SLEEPING"
+	self.Disturbance = Config.Baseline
+	self.Deadline = nil
+	self.HazardStart = nil
+	self.Rarity = nil
+	self.Activation += 1
 end
 return State

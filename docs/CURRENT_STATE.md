@@ -8,7 +8,7 @@ Last updated: 2026-10-13
 
 **Resource authority:** [RESOURCE_SPECIFICATION.md](RESOURCE_SPECIFICATION.md) owns the exact 40 launch resources, ten-rarity order, five-area pools and synchronized field rules. Older example tables are superseded.
 
-**Phase 3:** Carry/guardian implementation and verification are recorded in [PHASE3_RESULTS.md](PHASE3_RESULTS.md), with temporary encounter tuning and lifecycle contracts in [PHASE3_GAMEPLAY.md](PHASE3_GAMEPLAY.md). All 17 Phase 3 criteria passed, including an actual two-client Studio test.
+**Phase 3:** Carry/guardian implementation and verification are recorded in [PHASE3_RESULTS.md](PHASE3_RESULTS.md). Phase 3B immediate wake, full-runway pursuit to the safe-zone boundary, and rarity carry curses are in [PHASE3B_RESULTS.md](PHASE3B_RESULTS.md). That file also covers the 2026-10-14 two-client race pass and its two `GuardianService` fixes. Phase 4 feeding/evolution interfaces were not modified. Combined Phase 3B + Phase 4 behavior is not claimed until the branches are integrated and tested together.
 
 **Phase 4A:** Server-authoritative preview/confirmation and persistent current/cumulative Growth are implemented in the existing feeding/save services. See [PHASE4A_REPORT.md](PHASE4A_REPORT.md) for test evidence and outstanding checks. Existing prototype evolution/family/Leech behavior is preserved; no new stages, graphs or Phase 4B mechanics. Ordinary Studio sessions remain read-only, so feeding tests use explicitly injected in-memory sessions, never production saves.
 
