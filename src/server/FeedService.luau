@@ -14,6 +14,8 @@ local ResourceService = require(script.Parent.ResourceService)
 local Guard = require(script.Parent.InteractionGuard)
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+local rng=Random.new()
+local rolls=require(script.Parent.FeedRolls).new(function() return rng:NextNumber() end)
 
 local FeedService = {}
 
@@ -48,6 +50,9 @@ local function validate(player, base, host)
 	if not record or not EvolutionCalculator.valid(record) then return nil, "No compatible owned active pet" end
 	if record.PendingEvolution then return nil,"Choose your pending evolution at your pet first; item kept" end
 	if not definition or not definition.Launch then return nil, "Resource cannot be fed" end
+	local checked,compatible,compatibilityReason=pcall(ResourceEffects.canApply,record,definition)
+	if not checked then return nil,"Invalid catalyst compatibility; item kept" end
+	if not compatible then return nil,compatibilityReason.."; item kept" end
 	local ok,effect = pcall(ResourceEffects.resolve,record,definition)
 	if not ok then return nil, "Invalid pet or resource effects; item kept" end
 	if type(record.Mutations)~="table" or type(record.EvolutionFamilies)~="table" or not validCounter(record.Revision or 0) then return nil,"Invalid pet state; item kept" end
@@ -61,9 +66,10 @@ function FeedService.preview(player, base, host)
 	if not context then return {Available=false,Reason=reason} end
 	local ticket = HttpService:GenerateGUID(false)
 	local projected = PlayerData.copy(context.Record)
-	ResourceEffects.apply(projected,context.Definition,function() return 1 end) -- preview never rolls
+	local applied,forced = pcall(ResourceEffects.apply,projected,context.Definition,function() return 1 end) -- preview never rolls
+	if not applied then return {Available=false,Reason="Invalid catalyst effects; item kept"} end
 	projected.Revision += 1
-	local planned,_,outcome = pcall(EvolutionCalculator.afterFeed,projected)
+	local planned,_,outcome = pcall(EvolutionCalculator.afterFeed,projected,forced)
 	if not planned then return {Available=false,Reason="Invalid evolution state; item kept"} end
 	previews[player] = {Ticket=ticket,Expires=os.clock()+30,Character=player.Character,Base=base,Host=host,
 		Data=context.Data,Record=context.Record,Snapshot=PlayerData.copy(context.Record),PetId=context.PetId,
@@ -80,12 +86,13 @@ local function commit(player, context)
 	-- No yield from validation through record removal and pet/counter assignment.
 	-- All fallible calculations happen on a copy before either authoritative state changes.
 	local staged = PlayerData.copy(context.Record)
+	rolls.prune(function(id) return ResourceService.getRecord(id)~=nil end)
 	local evolved = false
 	local ok = pcall(function()
-		ResourceEffects.apply(staged,context.Definition,math.random) -- preserves the existing single Leech roll
+		local forced=ResourceEffects.apply(staged,context.Definition,rolls.forResource(context.Item.token))
 		staged.Revision = (staged.Revision or 0) + 1
 		assert(staged.Revision < math.huge and staged.Revision > (context.Record.Revision or 0))
-		evolved = EvolutionCalculator.afterFeed(staged)
+		evolved = EvolutionCalculator.afterFeed(staged,forced)
 	end)
 	if not ok then return false, "Effect calculation failed; item kept" end
 	local data = context.Data

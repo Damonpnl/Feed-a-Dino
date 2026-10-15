@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-15",
+  "scope": "Phase4C",
+  "studioId": "4bfc5802-0955-4c58-bbb1-55f9acbd71f5",
+  "placeId": 104154372052853,
+  "baseline": {
+    "run": 225,
+    "passed": 225,
+    "failed": 0
+  },
+  "finalUnits": {
+    "run": 255,
+    "passed": 255,
+    "failed": 0
+  },
+  "integration": {
+    "Phase4C": 89,
+    "Phase4A": 33,
+    "Phase4AClient": 7,
+    "Phase4B": 34,
+    "Phase4BClient": 6,
+    "Phase4ACompatibility": 13,
+    "Phase1": 32,
+    "Phase3": 155,
+    "FieldRuntimeSmoke": 14,
+    "Phase4AMultiplayer": {
+      "passed": 18,
+      "actualClients": 2
+    }
+  },
+  "sourceAudit": {
+    "checked": 70,
+    "mismatches": 0
+  },
+  "map": {
+    "baseParts": 1412,
+    "digest": 1212267917,
+    "nodes": 25,
+    "duplicateScriptPaths": 0,
+    "definitionErrors": 0
+  },
+  "phase3B": {
+    "archivedTests": 4,
+    "archiveMatches": 4,
+    "gameplayImported": false,
+    "port": 34873,
+    "connected": false
+  },
+  "phase4": {
+    "port": 34872,
+    "connected": true
+  },
+  "productionSavesAccessed": false,
+  "studioFinalMode": "Edit",
+  "unitRunnerDisabled": true,
+  "build": "PASS",
+  "diffCheck": "PASS",
+  "limitations": [
+    "Persistence tested with injected in-memory SessionStore, not cloud durability.",
+    "No new mutation acquisition probabilities except existing Mutant Leech 5%.",
+    "Family art and compatibility/minima are provisional as documented.",
+    "Stage 5 and Awakening remain unimplemented/locked."
+  ]
+}

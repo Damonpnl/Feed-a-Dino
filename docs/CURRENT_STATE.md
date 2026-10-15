@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-10-13
+Last updated: 2026-10-15
 
 **Product:** [Feed a Pet](FEED_A_PET_MASTER_CONTEXT.md) — compact steal → escape → feed → evolve loop on a long, narrow path. Use the master context for overarching intent and `RESOURCE_SPECIFICATION.md` for finalized resource mechanics. Current resource-system verification is recorded in [PHASE2_RESULTS.md](PHASE2_RESULTS.md); [PHASE1_RESULTS.md](PHASE1_RESULTS.md) retains the architecture audit and purchase-infrastructure limitations.
 
@@ -15,6 +15,8 @@ Last updated: 2026-10-13
 **Phase 4B:** Supersedes the prototype evolution policy above with a data-driven Stage 0–5 framework (5 locked), one-stage transitions, Growth reserve, primary/hybrid branches and persistent choices. Owned keys/PetId remain stable while EvolutionForm changes; duplicate forms cannot overwrite another pet. See [PHASE4B_REPORT.md](PHASE4B_REPORT.md) for verification status, provisional thresholds, migration policy and 4C handoff. No full catalyst/rarity/Awakening system is added.
 
 ## North-star loops
+
+**Phase 4C:** Catalyst compatibility, persisted latent/family unlocks, provisional special branches and retry-stable mutation tickets extend the existing feed transaction. See [PHASE4C_REPORT.md](PHASE4C_REPORT.md) for exact active/disabled content and verification. Only the retained 5% Mutant Leech roll is active; Stage 5 and Awakening remain locked/unimplemented. Phase 3B tests are archived outside active discovery and its gameplay remains isolated on Rojo port 34873; Phase 4 uses 34872.
 
 **Primary:** RUN OUT → GRAB ITEM → ESCAPE → FEED PET → EVOLVE → GET STRONGER → GO FARTHER
 

@@ -125,6 +125,11 @@ local additions = {
 	{"ArmoredRex","Armored Rex",2,2.5,Color3.fromRGB(130,110,100)},
 	{"VenomRex","Venom Rex",2,2.5,Color3.fromRGB(95,145,70)},
 	{"CrystalMossRex","Crystal Moss Rex",2,2.5,Color3.fromRGB(90,180,170)},
+	{"PrimalRex","Primal Rex (placeholder)",2,2.5,Color3.fromRGB(145,70,45)},
+	{"ToxicRex","Toxic Rex (placeholder)",2,2.5,Color3.fromRGB(130,170,45)},
+	{"AlphaRex","Alpha Rex (placeholder)",2,2.5,Color3.fromRGB(165,105,45)},
+	{"DraconicRex","Draconic Rex (placeholder)",2,2.5,Color3.fromRGB(170,60,80)},
+	{"InfernoRex","Inferno Rex (placeholder)",2,2.5,Color3.fromRGB(245,100,20)},
 	{"ApexRex","Apex Rex",3,2.5,Color3.fromRGB(170,110,65)},
 	{"AscendedRex","Ascended Rex",4,2.5,Color3.fromRGB(210,185,110)},
 	{"MythicRex","Mythic Ascension Rex (locked)",5,2.5,Color3.fromRGB(200,160,240)},
@@ -150,6 +155,14 @@ for _, id in {"Fangling","Mossback","Stonehide","JuvenileRex"} do
 	table.insert(edges,{Result="ArmoredRex",Requirements={Flesh=80,Mineral=80}})
 	table.insert(edges,{Result="VenomRex",Requirements={Flesh=80,Flora=80}})
 	table.insert(edges,{Result="CrystalMossRex",Requirements={Flora=80,Mineral=80}})
+	-- PROVISIONAL: reuse the existing Stage-1 minima/multipliers, not final balance.
+	for _,example in {
+		{"PrimalRex","Primal",{Flesh=80}}, {"ToxicRex","Toxic",{Flora=80}},
+		{"AlphaRex","Beast",{Flesh=80}}, {"DraconicRex","Draconic",{Flesh=80,Mineral=80}},
+		{"InfernoRex","Inferno",{Flesh=80}},
+	} do
+		table.insert(edges,{Result=example[1],Family=example[2],Requirements=example[3]})
+	end
 end
 for _, definition in monsters do
 	if definition.Stage==2 then table.insert(definition.Evolutions,{Result="ApexRex",Requirements={}}) end

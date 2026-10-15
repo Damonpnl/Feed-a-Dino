@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-14",
+  "placeId": 104154372052853,
+  "studioId": "4bfc5802-0955-4c58-bbb1-55f9acbd71f5",
+  "baseline": {
+    "run": 225,
+    "passed": 225,
+    "failed": 0
+  },
+  "expectedPhase4BModules": [
+    "DefinitionValidation_Test",
+    "EvolutionStages_Test",
+    "FeedingGrowth_Test",
+    "FieldRoller_Test",
+    "FieldState_Test",
+    "GuardianGeometry_Test",
+    "GuardianState_Test",
+    "NumberFormat_Test",
+    "Phase2Field_Test",
+    "ResourceDefinitions_Test",
+    "ResourceEffects_Test",
+    "ResourceValidation_Test",
+    "SessionStore_Test"
+  ],
+  "originalStudioModules": [
+    "FieldRoller_Test",
+    "ResourceDefinitions_Test",
+    "ResourceEffects_Test",
+    "FieldState_Test",
+    "ResourceValidation_Test",
+    "DefinitionValidation_Test",
+    "SessionStore_Test",
+    "Phase2Field_Test",
+    "GuardianGeometry_Test",
+    "GuardianState_Test",
+    "NumberFormat_Test",
+    "FeedingGrowth_Test",
+    "EvolutionStages_Test",
+    "CarryDebuff_Test",
+    "GuardianChase_Test",
+    "GuardianJourney_Test"
+  ],
+  "originalMatches": 12,
+  "replacedModule": "GuardianState_Test",
+  "preserved": [
+    {
+      "originalPath": "ServerStorage.UnitTest.Cases.GuardianState_Test",
+      "studioArchive": "ServerStorage.Phase3BPreservedTests.GuardianState_Test",
+      "diskBackup": "docs/audit/phase3b-preserved/GuardianState_Test.luau"
+    },
+    {
+      "originalPath": "ServerStorage.UnitTest.Cases.CarryDebuff_Test",
+      "studioArchive": "ServerStorage.Phase3BPreservedTests.CarryDebuff_Test",
+      "diskBackup": "docs/audit/phase3b-preserved/CarryDebuff_Test.luau"
+    },
+    {
+      "originalPath": "ServerStorage.UnitTest.Cases.GuardianChase_Test",
+      "studioArchive": "ServerStorage.Phase3BPreservedTests.GuardianChase_Test",
+      "diskBackup": "docs/audit/phase3b-preserved/GuardianChase_Test.luau"
+    },
+    {
+      "originalPath": "ServerStorage.UnitTest.Cases.GuardianJourney_Test",
+      "studioArchive": "ServerStorage.Phase3BPreservedTests.GuardianJourney_Test",
+      "diskBackup": "docs/audit/phase3b-preserved/GuardianJourney_Test.luau"
+    }
+  ],
+  "connection": {
+    "studioPid": 32420,
+    "phase4ServerPid": 15028,
+    "phase4Port": 34872,
+    "phase3bServerPid": 27532,
+    "phase3bPort": 34873,
+    "establishedTo34872": 2,
+    "establishedTo34873": 0,
+    "productionSourcesMatchedBeforeChanges": 52
+  }
+}

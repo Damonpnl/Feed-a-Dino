@@ -11,6 +11,9 @@ local Styles = require(script.Parent.RarityStyles)
 local Validation = {}
 function Validation.config()
 	local errors = ResourceValidation.config()
+	local catalystOK,catalystErrors=pcall(require(script.Parent.CatalystEffects).validate)
+	if catalystOK then for _,message in catalystErrors do table.insert(errors,message) end
+	else table.insert(errors,"Malformed catalyst behavior: "..tostring(catalystErrors)) end
 	local ok,evolutionErrors=pcall(require(script.Parent.EvolutionCalculator).validate)
 	if ok then for _,message in evolutionErrors do table.insert(errors,message) end
 	else table.insert(errors,"Malformed evolution graph: "..tostring(evolutionErrors)) end

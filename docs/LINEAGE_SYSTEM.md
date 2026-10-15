@@ -14,6 +14,12 @@ Each feed/choice advances at most one stage and spends only the source threshold
 
 The starter is Proto Rex.
 
+Phase 4C extends family compatibility and adds provisional PrimalRex, ToxicRex,
+AlphaRex, DraconicRex and InfernoRex Stage 2 branches. See
+[PHASE4C_REPORT.md](PHASE4C_REPORT.md) for exact predicates, disabled content,
+mutation taxonomy and API details. Family unlocks and latent traits do not bypass
+stage or affinity requirements; pending choices remain authoritative.
+
 | Result | Requirements |
 |---|---|
 | Fangling | Flesh 40, growth 50 |

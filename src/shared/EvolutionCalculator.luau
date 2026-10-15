@@ -23,6 +23,8 @@ function Calculator.initialize(record, ownedKey)
 	record.GrowthReserve = record.GrowthReserve or 0
 	record.Lineage = record.Lineage or "ProtoRex"
 	record.LineageTags = record.LineageTags or {}
+	record.LatentTraits = record.LatentTraits or {}
+	record.SpecialEvolutions = record.SpecialEvolutions or {}
 end
 function Calculator.valid(record)
 	if type(record)~="table" then return false end
@@ -52,6 +54,8 @@ function Calculator.eligible(record, branch)
 	if record.Growth+record.GrowthReserve<branch.Growth then return false,"More Growth required" end
 	if branch.RequiredLineage and record.Lineage~=branch.RequiredLineage then return false,"Wrong lineage" end
 	for _,tag in branch.RequiredTags or {} do if not record.LineageTags[tag] then return false,"Missing lineage trait" end end
+	for _,tag in branch.RequiredLatentTraits or {} do if not (record.LatentTraits or {})[tag] then return false,"Missing latent trait" end end
+	for _,tag in branch.RequiredSpecialEvolutions or {} do if not (record.SpecialEvolutions or {})[tag] then return false,"Special evolution not enabled" end end
 	for _,mutation in branch.RequiredMutations or {} do if not table.find(record.Mutations,mutation) then return false,"Missing special trait" end end
 	if branch.MinRarity then
 		local rarity,minimum=Rarities.get(record.Rarity),Rarities.get(branch.MinRarity)
@@ -88,10 +92,16 @@ local function advance(record, branch)
 	record.PendingEvolution=nil
 	Calculator.boundGrowth(record)
 end
-function Calculator.afterFeed(record)
+function Calculator.afterFeed(record, forcedBranchId)
 	assert(not record.PendingEvolution,"Resolve the existing evolution choice first")
 	Calculator.boundGrowth(record)
 	local candidates=Calculator.candidates(record)
+	if forcedBranchId then
+		for _,branch in candidates do
+			if branch.Id==forcedBranchId then advance(record,branch) return true,"Configured eligible evolution: "..branch.Result end
+		end
+		error("Configured forced branch is not eligible")
+	end
 	if #candidates==1 and Config.AutoAdvanceUnique then
 		advance(record,candidates[1])
 		return true,"Evolves into " .. Definitions.get(candidates[1].Result).DisplayName .. ". Overflow is retained."
@@ -136,6 +146,13 @@ function Calculator.validate()
 	local function check(ok,message) if not ok then table.insert(errors,message) end end
 	local families={}
 	for _,effect in require(script.Parent.SpecialEffectDefinitions) do if effect.Family then families[effect.Family]=true end end
+	local latent,special={},{}
+	for _,behavior in require(script.Parent.CatalystDefinitions).getBehaviors() do
+		for _,effect in behavior.Effects do
+			if effect.Kind=="AddLatentTrait" then latent[effect.Id]=true end
+			if effect.Kind=="EnableSpecialEvolution" then special[effect.Id]=true end
+		end
+	end
 	for id,definition in all do
 		check(Config.Stages[definition.Stage]~=nil,"Missing stage: "..id)
 		check(type(definition.Visual)=="table" and definition.Visual.ModelKey=="Placeholder" and number(definition.Visual.Scale) and definition.Visual.Scale>0,"Invalid placeholder: "..id)
@@ -152,6 +169,8 @@ function Calculator.validate()
 			check(branch.Probability==nil or (number(branch.Probability) and branch.Probability<=1),"Invalid probability: "..id)
 			for key,value in branch.Requirements do check(affinities[key] and number(value),"Invalid affinity minimum: "..id) end
 			for _,tag in branch.RequiredTags or {} do check(all[tag] and all[tag].Stage<=definition.Stage,"Unreachable required lineage tag: "..id) end
+			for _,tag in branch.RequiredLatentTraits or {} do check(latent[tag],"Unknown latent trait: "..id) end
+			for _,tag in branch.RequiredSpecialEvolutions or {} do check(special[tag],"Unknown special evolution: "..id) end
 		end
 	end
 	-- Structural reachability includes locked future edges; monotone stages prove acyclicity.

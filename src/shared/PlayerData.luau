@@ -18,6 +18,7 @@ export type MonsterRecord = {
 	EvolutionFamilies: { [string]: boolean },
 	PetId: string?, EvolutionForm: string?, EvolutionVersion: number?, GrowthReserve: number?,
 	Lineage: string?, LineageTags: {[string]: boolean}?, PendingEvolution: any?,
+	LatentTraits: {[string]: boolean}?, SpecialEvolutions: {[string]: boolean}?,
 }
 
 export type SaveData = {
