@@ -28,6 +28,8 @@ function Config.validate()
 		if c.Kind~="Charge" and c.Kind~="Lunge" and c.Kind~="Shockwave" and c.Kind~="FireSweep" then table.insert(errors,"Invalid hazard: "..area.Id) end
 		if c.Kind=="Shockwave" and (type(c.Radius)~="number" or not(c.Radius>0 and c.Radius<math.huge)) then table.insert(errors,"Invalid radius") end
 	end
+	for _, message in require(script.Parent.GuardianChase).validate() do table.insert(errors, message) end
+	for _, message in require(script.Parent.CarryDebuff).validate() do table.insert(errors, message) end
 	return errors
 end
 for _,row in Config.Areas do table.freeze(row) end

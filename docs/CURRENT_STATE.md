@@ -8,7 +8,7 @@ Last updated: 2026-10-15
 
 **Resource authority:** [RESOURCE_SPECIFICATION.md](RESOURCE_SPECIFICATION.md) owns the exact 40 launch resources, ten-rarity order, five-area pools and synchronized field rules. Older example tables are superseded.
 
-**Phase 3:** Carry/guardian implementation and verification are recorded in [PHASE3_RESULTS.md](PHASE3_RESULTS.md), with temporary encounter tuning and lifecycle contracts in [PHASE3_GAMEPLAY.md](PHASE3_GAMEPLAY.md). All 17 Phase 3 criteria passed, including an actual two-client Studio test.
+**Phase 3:** Carry/guardian implementation and verification are recorded in [PHASE3_RESULTS.md](PHASE3_RESULTS.md). Phase 3B immediate wake, full-runway pursuit to the safe-zone boundary, and rarity carry curses are in [PHASE3B_RESULTS.md](PHASE3B_RESULTS.md). That file also covers the 2026-10-14 two-client race pass and its two `GuardianService` fixes. Phase 4 feeding/evolution interfaces were not modified. Phase 3B was merged with Phase 4C on 2026-10-15 and the combined tree was retested; see "Integration with Phase 4C" in PHASE3B_RESULTS.md.
 
 **Phase 4A:** Server-authoritative preview/confirmation and persistent current/cumulative Growth are implemented in the existing feeding/save services. See [PHASE4A_REPORT.md](PHASE4A_REPORT.md) for test evidence and outstanding checks. Existing prototype evolution/family/Leech behavior is preserved; no new stages, graphs or Phase 4B mechanics. Ordinary Studio sessions remain read-only, so feeding tests use explicitly injected in-memory sessions, never production saves.
 
@@ -16,7 +16,7 @@ Last updated: 2026-10-15
 
 ## North-star loops
 
-**Phase 4C:** Catalyst compatibility, persisted latent/family unlocks, provisional special branches and retry-stable mutation tickets extend the existing feed transaction. See [PHASE4C_REPORT.md](PHASE4C_REPORT.md) for exact active/disabled content and verification. Only the retained 5% Mutant Leech roll is active; Stage 5 and Awakening remain locked/unimplemented. Phase 3B tests are archived outside active discovery and its gameplay remains isolated on Rojo port 34873; Phase 4 uses 34872.
+**Phase 4C:** Catalyst compatibility, persisted latent/family unlocks, provisional special branches and retry-stable mutation tickets extend the existing feed transaction. See [PHASE4C_REPORT.md](PHASE4C_REPORT.md) for exact active/disabled content and verification. Only the retained 5% Mutant Leech roll is active; Stage 5 and Awakening remain locked/unimplemented. Phase 3B is now merged into this branch, its unit tests are back in active discovery, and Rojo serves the combined tree on port 34872 only.
 
 **Primary:** RUN OUT → GRAB ITEM → ESCAPE → FEED PET → EVOLVE → GET STRONGER → GO FARTHER
 

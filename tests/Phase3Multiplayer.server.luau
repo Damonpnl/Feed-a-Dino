@@ -3,8 +3,6 @@ local STS=game:GetService("StudioTestService")
 if not game:GetService("RunService"):IsStudio() or STS:GetTestArgs()~="Phase3Multiplayer" then return end
 local Server=game.ServerScriptService:WaitForChild("Server")
 local Spawn,Carry,Resource,Data,Guardian=require(Server.SpawnService),require(Server.CarryService),require(Server.ResourceService),require(Server.DataService),require(Server.GuardianService)
-local Resources=require(game.ReplicatedStorage.Shared.ResourceDefinitions)
-local Config=require(game.ReplicatedStorage.Shared.GuardianConfig)
 local checks=0
 local function check(v,m) assert(v,m) checks+=1 end
 local function waitFor(fn,seconds)
@@ -58,28 +56,29 @@ local ok,failure=xpcall(function()
 	Carry.forceDrop(loser,loser.Character,"Test") Guardian.resetAll()
 	task.wait(0.17) go(a,first) go(b,second)
 	local before=Guardian.getSnapshot("Grasslands").Activation
-	local expected=Config.Disturbance[Resources.get(Resource.getRecord(first).ResourceId).Rarity]+Config.Disturbance[Resources.get(Resource.getRecord(second).ResourceId).Rarity]
 	result=parallel(function() return Spawn.pickup(a,first) end,function() return Spawn.pickup(b,second) end)
 	check(result[1] and result[2],"Two different simultaneous pickups succeed")
-	check(Guardian.getSnapshot("Grasslands").Disturbance==expected,"Shared disturbance loses no contribution")
+	check(Guardian.getSnapshot("Grasslands").State~="SLEEPING","Shared guardian wakes for the biome")
+	check(Guardian.getSnapshot("Grasslands").Disturbance==0,"No disturbance meter is required")
+	check(#workspace.GeneratedGameplay.Guardians:GetChildren()==5,"One guardian model per biome")
 	check(not Spawn.pickup(a,"fabricated-guid"),"Fabricated identity rejected")
-	check(not Guardian.onPickup(a,first,Resource.getRecord(first).ClaimVersion),"Duplicate disturbance rejected")
-	-- b keeps carrying while a contributes further successful recoveries.
-	for _=1,15 do
-		if Guardian.getSnapshot("Grasslands").State=="WARNING" then break end
-		Carry.forceDrop(a,a.Character,"Test") assert(acquire(a,first))
-	end
+	check(not Guardian.onPickup(a,first,Resource.getRecord(first).ClaimVersion),"Duplicate wake rejected")
+	check(waitFor(function()
+		local state=Guardian.getSnapshot("Grasslands").State
+		return state=="WARNING" or state=="HAZARD"
+	end,35),"One shared pursuit reaches an attack")
 	local warning=Guardian.getSnapshot("Grasslands")
-	check(warning.State=="WARNING" and warning.Activation==before+1,"One wake across shared threshold")
+	check(warning.Activation==before+1,"One wake across both carriers")
 	local hpA,hpB=a.Character.Humanoid.Health,b.Character.Humanoid.Health
 	-- Front starts at negative local X, so contacts occur early in the window.
 	a.Character.HumanoidRootPart.CFrame=warning.Frame*CFrame.new(-40,3,0)
 	b.Character.HumanoidRootPart.CFrame=warning.Frame*CFrame.new(-40,3,2)
-	check(waitFor(function() return not Carry.get(a) and not Carry.get(b) end,2.5),"One hazard drops both real carriers")
+	check(waitFor(function() return not Carry.get(a) and not Carry.get(b) end,4),"One hazard drops both real carriers")
 	check(a.Character.Humanoid.Health==hpA and b.Character.Humanoid.Health==hpB,"Both players survive")
 	check(Resource.getRecord(first).State=="DROPPED" and Resource.getRecord(second).State=="DROPPED","Both same-GUID drops exist")
 	check(acquire(b,first),"Cross-player recovery during hazard")
-	check(Guardian.getSnapshot("Grasslands").State=="HAZARD","Lifecycle operations occur during active hazard")
+	local during=Guardian.getSnapshot("Grasslands").State
+	check(during=="HAZARD" or during=="COOLDOWN" or during=="PURSUING","Lifecycle continues after a shared hit")
 	local old=a.Character
 	a.Character.HumanoidRootPart.Anchored=false
 	task.spawn(function() a:LoadCharacterAsync() end)
