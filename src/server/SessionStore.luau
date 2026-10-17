@@ -26,6 +26,19 @@ function SessionStore.new(adapter, options)
 	return setmetatable({adapter=adapter, sessions={}, wait=options.wait or task.wait,
 		log=options.log or warn, attempts=options.attempts or 3, readOnly=options.readOnly == true},SessionStore)
 end
+-- Ephemeral adapter for Studio. A fresh adapter is a fresh database; no services
+-- or persistent files are involved. The normal session/conflict lifecycle is reused.
+function SessionStore.memoryAdapter()
+	local records={}
+	return {
+		get=function(key) return PlayerData.copy(records[key]) end,
+		update=function(key,transform)
+			local result=transform(PlayerData.copy(records[key]))
+			if result~=nil then records[key]=PlayerData.copy(result) end
+			return PlayerData.copy(result)
+		end,
+	}
+end
 function SessionStore:get(key)
 	local session=self.sessions[key]
 	return session and session.status~="Loading" and not session.closing and session.data or nil

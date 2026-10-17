@@ -9,6 +9,12 @@ local MonsterDefinitions = require(ReplicatedStorage:WaitForChild("Shared"):Wait
 local PlayerData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PlayerData"))
 local Evolution = require(ReplicatedStorage.Shared.EvolutionCalculator)
 local Stages = require(ReplicatedStorage.Shared.GrowthStageDefinitions)
+local Multipliers = require(ReplicatedStorage.Shared.PetMultipliers)
+local Prestige = require(ReplicatedStorage.Shared.PrestigeCalculator)
+local Progression = require(ReplicatedStorage.Shared.PetProgressionConfig)
+local FeedRolls = require(script.Parent.FeedRolls)
+local choiceRolls = {}
+local rng = Random.new()
 local Guard = require(script.Parent.InteractionGuard)
 local HttpService = game:GetService("HttpService")
 
@@ -52,16 +58,13 @@ function MonsterService.getRecord(player: Player): PlayerData.MonsterRecord?
 end
 
 function MonsterService.getMultiplier(player: Player): number
+	return MonsterService.getMultipliers(player).TrainingMultiplier
+end
+
+function MonsterService.getMultipliers(player: Player)
 	local record = MonsterService.getRecord(player)
-	if record == nil then
-		return 1
-	end
-	local definition = MonsterDefinitions.get(Evolution.form(record))
-	if definition == nil then
-		return 1
-	end
-	local original = MonsterDefinitions.get(record.Species)
-	return math.max(definition.BaseMultiplier,if original then original.BaseMultiplier else 1)
+	if not record then return {IncomeMultiplier=1,TrainingMultiplier=1} end
+	return Multipliers.resolve(record)
 end
 
 function MonsterService.publish(player: Player)
@@ -95,6 +98,12 @@ function MonsterService.publish(player: Player)
 	player:SetAttribute("SpecialEvolutions",HttpService:JSONEncode(record.SpecialEvolutions or {}))
 	player:SetAttribute("Multiplier", MonsterService.getMultiplier(player))
 	player:SetAttribute("Rarity", record.Rarity)
+	local multipliers=MonsterService.getMultipliers(player)
+	player:SetAttribute("IncomeMultiplier",multipliers.IncomeMultiplier)
+	player:SetAttribute("TrainingMultiplier",multipliers.TrainingMultiplier)
+	player:SetAttribute("AscensionState",Prestige.ascension(record,Progression.Ascensions.ProtoRexMythic).State)
+	player:SetAttribute("Awakened",record.Awakened==true)
+	player:SetAttribute("Awakening",if type(record.Awakening)=="table" then HttpService:JSONEncode(record.Awakening) else "")
 	DataService.publish(player)
 	MonsterService.refreshVisual(player)
 end
@@ -137,7 +146,7 @@ function MonsterService.refreshVisual(player: Player)
 		return
 	end
 	local stageScale = if definition and definition.Visual then definition.Visual.Scale else 1
-	local threshold = if definition then definition.GrowthRequired else 50
+	local threshold = if definition then definition.GrowthRequired else Stages.Stages[0].GrowthRequired
 	local scale = stageScale * (3 + math.clamp(record.Growth / threshold, 0, 1))
 	body.Size = Vector3.new(scale, scale, scale * 1.4)
 	body.Color = if definition ~= nil then definition.Color else Color3.fromRGB(180, 180, 180)
@@ -175,12 +184,21 @@ function MonsterService.chooseEvolution(player: Player, request: any): (boolean,
 	local count=data.Stats and data.Stats.Evolutions
 	if type(count)~="number" or count<0 or count>=Stages.MaxNumber or count%1~=0 then return false,"Invalid evolution counter" end
 	local staged=PlayerData.copy(record)
-	local calculated,ok,reason=pcall(Evolution.select,staged,request.Token,request.BranchId)
+	-- One bounded cache per player/pending choice; failed staged attempts cannot reroll.
+	local rollKey=request.PetKey..":"..request.Token
+	if not choiceRolls[player] then choiceRolls[player]=FeedRolls.new(function() return rng:NextNumber() end) end
+	local tickets=choiceRolls[player]
+	-- Only the authoritative pending token may own a cache. Forged requests cannot evict it.
+	local pending=record.PendingEvolution
+	if type(pending)~="table" or pending.Token~=request.Token then return false,"Stale evolution choice" end
+	tickets.prune(function(key) return key==rollKey end)
+	local calculated,ok,reason=pcall(Evolution.select,staged,request.Token,request.BranchId,tickets.forResource(rollKey))
 	if not calculated then return false,"Evolution calculation failed; state kept" end
 	if not ok then return false,reason end
 	-- No yield between session validation, selection, and replacing this one owned record.
 	data.Monsters[data.EquippedMonster]=staged
 	data.Stats.Evolutions += 1
+	choiceRolls[player]=nil
 	local published=pcall(function() player:SetAttribute("StatusMessage",reason) MonsterService.publish(player) end)
 	if not published then warn("[MonsterService] Evolution committed; presentation needs refresh") end
 	return true,reason
@@ -200,6 +218,7 @@ end
 
 function MonsterService.start()
 	Players.PlayerRemoving:Connect(function(player)
+		choiceRolls[player]=nil
 		local visual = visuals[player]
 		if visual ~= nil then
 			visual:Destroy()

@@ -4,12 +4,12 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Areas = require(game.ReplicatedStorage.Shared.AreaDefinitions)
 local Presentation = {}
-for _,name in {"Wake","Warning","Attack","Cooldown","Disengage","Sleep","SoundRequested","VFXRequested","CameraShake","ResourceDropped"} do
+for _,name in {"Wake","Warning","Attack","Cooldown","Disengage","Sleep","SoundRequested","VFXRequested","CameraShake","ResourceDropped","Caught"} do
 	Presentation[name]=Instance.new("BindableEvent")
 end
 local connections, watched, gui, label = {}, {}, nil, nil
 local partConnections = {}
-local shakeUntil, shakeHumanoid, originalOffset = 0, nil, nil
+local shakeUntil, shakeHumanoid, originalOffset, shakeAmount = 0, nil, nil, 0.12
 local function restoreCamera()
 	if shakeHumanoid and shakeHumanoid.Parent then shakeHumanoid.CameraOffset=originalOffset end
 	shakeHumanoid,originalOffset=nil,nil
@@ -85,16 +85,37 @@ function Presentation.Start()
 		local shown=hunt.Text
 		task.delay(3.5,function() if hunt.Parent and hunt.Text==shown then hunt.Visible=false end end)
 	end))
-	table.insert(connections,player:GetAttributeChangedSignal("HazardTick"):Connect(function()
-		Presentation.CameraShake:Fire(0.2)
+	local function shake(duration, amount)
+		Presentation.CameraShake:Fire(duration)
 		restoreCamera()
 		shakeHumanoid=player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-		if shakeHumanoid then originalOffset=shakeHumanoid.CameraOffset shakeUntil=os.clock()+0.2 end
+		if shakeHumanoid then originalOffset=shakeHumanoid.CameraOffset shakeUntil=os.clock()+duration shakeAmount=amount end
+	end
+	table.insert(connections,player:GetAttributeChangedSignal("HazardTick"):Connect(function() shake(0.2,0.12) end))
+	local flash=Instance.new("Frame") flash.Name="CatchFlash" flash.Size=UDim2.fromScale(1,1) flash.BackgroundColor3=Color3.fromRGB(200,30,20)
+	flash.BackgroundTransparency=1 flash.BorderSizePixel=0 flash.ZIndex=0 flash.Parent=gui
+	table.insert(connections,player:GetAttributeChangedSignal("GuardianCaughtTick"):Connect(function()
+		shake(0.45,0.35)
+		flash.BackgroundTransparency=0.45
+		game:GetService("TweenService"):Create(flash,TweenInfo.new(0.6),{BackgroundTransparency=1}):Play()
+		Presentation.Caught:Fire(player:GetAttribute("GuardianCaughtBy"))
+	end))
+	-- The server owns the ragdoll; this only makes sure the local humanoid resumes control.
+	table.insert(connections,player:GetAttributeChangedSignal("GuardianRagdoll"):Connect(function()
+		if player:GetAttribute("GuardianRagdoll") then return end
+		local humanoid=player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if humanoid and humanoid.Health>0 then
+			humanoid.PlatformStand=false
+			local state=humanoid:GetState()
+			if state==Enum.HumanoidStateType.PlatformStanding or state==Enum.HumanoidStateType.Physics or state==Enum.HumanoidStateType.FallingDown or state==Enum.HumanoidStateType.Ragdoll then
+				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+			end
+		end
 	end))
 	table.insert(connections,RunService.Heartbeat:Connect(function()
 		if not shakeHumanoid then return end
 		if os.clock()>=shakeUntil or not player.Character or shakeHumanoid.Parent~=player.Character then restoreCamera() return end
-		shakeHumanoid.CameraOffset=originalOffset+Vector3.new(math.sin(os.clock()*70)*0.12,0,0)
+		shakeHumanoid.CameraOffset=originalOffset+Vector3.new(math.sin(os.clock()*70)*shakeAmount,math.cos(os.clock()*53)*shakeAmount*0.5,0)
 	end))
 end
 function Presentation.Stop()

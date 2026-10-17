@@ -292,13 +292,21 @@ local ok,failure=xpcall(function()
 	roots[a].CFrame=CFrame.new(stationA) roots[b].CFrame=CFrame.new(stationB)
 	local tokens={[a]=swampItem,[b]=jungleItem}
 	local curses={[a]=a:GetAttribute("CarryCurse"),[b]=b:GetAttribute("CarryCurse")}
-	local stress={Hits=0,Repicks=0,Rejected=0,CurseDrift=0}
+	local stress={Hits=0,Repicks=0,Rejected=0,CurseDrift=0,Catches={Swamp=0,Jungle=0}}
 	local attacksBefore={Swamp=monitor.Attacks.Swamp,Jungle=monitor.Attacks.Jungle}
+	local Catch=require(Server.GuardianCatch)
 	local stressEnd=os.clock()+45
 	while os.clock()<stressEnd and remaining()>8 do
 		for p,station in {[a]=stationA,[b]=stationB} do
-			if not Carry.get(p) then
-				if string.find(p:GetAttribute("DropReason") or "","Guardian:",1,true) then stress.Hits+=1 p:SetAttribute("DropReason","") end
+			-- Body catches are guardian pressure too; re-picks wait out the catch recovery lock.
+			if not Carry.get(p) and not Catch.isRecovering(p) then
+				local reason=p:GetAttribute("DropReason") or ""
+				if string.find(reason,"Guardian",1,true) then
+					stress.Hits+=1
+					local area=string.match(reason,"^GuardianCatch:(%w+)$")
+					if area and stress.Catches[area] then stress.Catches[area]+=1 end
+					p:SetAttribute("DropReason","")
+				end
 				if acquire(p,tokens[p]) then
 					stress.Repicks+=1
 					if p:GetAttribute("CarryCurse")~=curses[p] then stress.CurseDrift+=1 end
@@ -310,9 +318,11 @@ local ok,failure=xpcall(function()
 		end
 		task.wait(0.05)
 	end
-	table.insert(notes,("Stress: hits=%d repicks=%d rejected=%d swampAttacks=%d jungleAttacks=%d"):format(
-		stress.Hits,stress.Repicks,stress.Rejected,monitor.Attacks.Swamp-attacksBefore.Swamp,monitor.Attacks.Jungle-attacksBefore.Jungle))
-	check(monitor.Attacks.Swamp>attacksBefore.Swamp and monitor.Attacks.Jungle>attacksBefore.Jungle,"Both guardians attacked during the stress")
+	table.insert(notes,("Stress: hits=%d repicks=%d rejected=%d swampAttacks=%d jungleAttacks=%d swampCatches=%d jungleCatches=%d"):format(
+		stress.Hits,stress.Repicks,stress.Rejected,monitor.Attacks.Swamp-attacksBefore.Swamp,monitor.Attacks.Jungle-attacksBefore.Jungle,
+		stress.Catches.Swamp,stress.Catches.Jungle))
+	check((monitor.Attacks.Swamp>attacksBefore.Swamp or stress.Catches.Swamp>0) and (monitor.Attacks.Jungle>attacksBefore.Jungle or stress.Catches.Jungle>0),
+		"Both guardians attacked or caught during the stress")
 	check(stress.CurseDrift==0,"No curse reroll across repeated hazard drops and recoveries")
 	check(stress.Rejected==0,"Every recovery of a dropped item was accepted")
 	for p in tokens do

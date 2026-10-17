@@ -11,6 +11,11 @@ local Styles = require(script.Parent.RarityStyles)
 local Validation = {}
 function Validation.config()
 	local errors = ResourceValidation.config()
+	for _,name in {"PetRarity","PrestigeCalculator","PetMultipliers"} do
+		local ok,messages=pcall(function() return require(script.Parent[name]).validate() end)
+		if ok then for _,message in messages do table.insert(errors,message) end
+		else table.insert(errors,"Malformed "..name..": "..tostring(messages)) end
+	end
 	local catalystOK,catalystErrors=pcall(require(script.Parent.CatalystEffects).validate)
 	if catalystOK then for _,message in catalystErrors do table.insert(errors,message) end
 	else table.insert(errors,"Malformed catalyst behavior: "..tostring(catalystErrors)) end

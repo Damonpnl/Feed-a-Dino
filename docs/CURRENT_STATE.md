@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-10-15
+Last updated: 2026-10-16
 
 **Product:** [Feed a Pet](FEED_A_PET_MASTER_CONTEXT.md) — compact steal → escape → feed → evolve loop on a long, narrow path. Use the master context for overarching intent and `RESOURCE_SPECIFICATION.md` for finalized resource mechanics. Current resource-system verification is recorded in [PHASE2_RESULTS.md](PHASE2_RESULTS.md); [PHASE1_RESULTS.md](PHASE1_RESULTS.md) retains the architecture audit and purchase-infrastructure limitations.
 
@@ -10,11 +10,13 @@ Last updated: 2026-10-15
 
 **Phase 3:** Carry/guardian implementation and verification are recorded in [PHASE3_RESULTS.md](PHASE3_RESULTS.md). Phase 3B immediate wake, full-runway pursuit to the safe-zone boundary, and rarity carry curses are in [PHASE3B_RESULTS.md](PHASE3B_RESULTS.md). That file also covers the 2026-10-14 two-client race pass and its two `GuardianService` fixes. Phase 4 feeding/evolution interfaces were not modified. Phase 3B was merged with Phase 4C on 2026-10-15 and the combined tree was retested; see "Integration with Phase 4C" in PHASE3B_RESULTS.md.
 
-**Phase 4A:** Server-authoritative preview/confirmation and persistent current/cumulative Growth are implemented in the existing feeding/save services. See [PHASE4A_REPORT.md](PHASE4A_REPORT.md) for test evidence and outstanding checks. Existing prototype evolution/family/Leech behavior is preserved; no new stages, graphs or Phase 4B mechanics. Ordinary Studio sessions remain read-only, so feeding tests use explicitly injected in-memory sessions, never production saves.
+**Phase 4A:** Server-authoritative preview/confirmation and persistent current/cumulative Growth are implemented in the existing feeding/save services. See [PHASE4A_REPORT.md](PHASE4A_REPORT.md) for historical test evidence. **Studio testing update (2026-10-15):** ordinary Play now uses writable, temporary `StudioMemory` sessions through the existing SessionStore. Gameplay works without a fixture; data resets when Play stops. Production DataStore access remains prohibited in Studio. Published-server failure/conflict guards are unchanged. See [STUDIO_MEMORY_FEEDING_FIX.md](STUDIO_MEMORY_FEEDING_FIX.md).
 
 **Phase 4B:** Supersedes the prototype evolution policy above with a data-driven Stage 0–5 framework (5 locked), one-stage transitions, Growth reserve, primary/hybrid branches and persistent choices. Owned keys/PetId remain stable while EvolutionForm changes; duplicate forms cannot overwrite another pet. See [PHASE4B_REPORT.md](PHASE4B_REPORT.md) for verification status, provisional thresholds, migration policy and 4C handoff. No full catalyst/rarity/Awakening system is added.
 
 ## North-star loops
+
+**Phase 4D:** Independent pet rarity resolution, disabled Ascension/Awakening eligibility and centralized income/training metadata extend the existing evolution transaction. All live rarity rules retain the current rarity; prestige remains disabled pending approved requirements. See [PHASE4D_REPORT.md](PHASE4D_REPORT.md) for verification, additive save fields and Phase 5 handoff. No economy values are changed.
 
 **Phase 4C:** Catalyst compatibility, persisted latent/family unlocks, provisional special branches and retry-stable mutation tickets extend the existing feed transaction. See [PHASE4C_REPORT.md](PHASE4C_REPORT.md) for exact active/disabled content and verification. Only the retained 5% Mutant Leech roll is active; Stage 5 and Awakening remain locked/unimplemented. Phase 3B is now merged into this branch, its unit tests are back in active discovery, and Rojo serves the combined tree on port 34872 only.
 

@@ -8,23 +8,23 @@ local DataService = {}
 local STORE_NAME = "MonsterProgress_v1"
 local AUTOSAVE_SECONDS = 60
 local started, closing = false, false
+local studio = RunService:IsStudio()
 local store: DataStore? = nil
 local function getStore(): DataStore
+	assert(not studio, "Studio must never open a production DataStore")
 	if not store then store = DataStoreService:GetDataStore(STORE_NAME) end
 	return store :: DataStore
 end
 -- Studio must never touch production saves, even when API access is enabled.
-local studio = RunService:IsStudio()
-local sessions = SessionStore.new({
+local sessions = SessionStore.new(if studio then SessionStore.memoryAdapter() else {
 	get = function(key)
-		if studio then return nil end
 		return getStore():GetAsync(key)
 	end,
 	update = function(key, transform)
 		assert(not studio, "Studio production writes are disabled")
 		return getStore():UpdateAsync(key, transform)
 	end,
-}, {readOnly=studio})
+})
 local function keyFor(player: Player): string return "u_" .. tostring(player.UserId) end
 
 local function publishLeaderstats(player: Player, data: PlayerData.SaveData)
@@ -67,7 +67,9 @@ function DataService.get(player: Player): PlayerData.SaveData?
 	return sessions:get(keyFor(player))
 end
 function DataService.getStatus(player: Player)
-	return sessions:status(keyFor(player))
+	local status=sessions:status(keyFor(player))
+	if status then status.Backend=if studio then "StudioMemory" else "ProductionDataStore" end
+	return status
 end
 function DataService.isWritable(player: Player): boolean
 	local status = DataService.getStatus(player)
@@ -87,6 +89,7 @@ function DataService.load(player: Player)
 	if player.Parent ~= Players then return end
 	local status = sessions:status(keyFor(player))
 	player:SetAttribute("DataStatus", status.Status)
+	player:SetAttribute("DataBackend",if studio then "StudioMemory" else "ProductionDataStore")
 	DataService.publish(player)
 end
 function DataService.save(player: Player)
@@ -101,7 +104,7 @@ end
 function DataService.start()
 	if started then return end
 	started = true
-	if studio then print("[DataService] Studio read-only session; no production DataStore requests.") end
+	if studio then print("[DataService] StudioMemory: writable temporary sessions; no production DataStore requests. Data resets when Play stops.") end
 	Players.PlayerRemoving:Connect(DataService.release)
 	game:BindToClose(function()
 		closing = true

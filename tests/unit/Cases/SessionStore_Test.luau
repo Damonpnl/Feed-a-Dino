@@ -18,6 +18,24 @@ local function fixture(initial, options)
 	return Store.new(adapter,options),db,adapter
 end
 return function(t)
+	-- Studio uses the same session engine over a fresh, isolated adapter.
+	t.test("memory adapter supports writable sessions and independent keys",function()
+		local s=Store.new(Store.memoryAdapter())
+		local a=s:load("a") local b=s:load("b") a.Monsters.ProtoRex.Growth=5 a.Cash=25
+		t.expect.truthy(s:status("a").CanSave) t.expect.equal(b.Cash,0)
+		t.expect.truthy(s:release("a")) t.expect.equal(s:load("a").Cash,25)
+		t.expect.equal(s:get("a").Monsters.ProtoRex.Growth,5)
+		local fresh=Store.new(Store.memoryAdapter()) t.expect.equal(fresh:load("a").Cash,0)
+	end)
+	-- Aliasing cannot bypass saves or mutate the adapter's conflict baseline.
+	t.test("memory adapter copies records and cancels conflicting transforms",function()
+		local adapter=Store.memoryAdapter() local a,b=Store.new(adapter),Store.new(adapter)
+		a:load("p") b:load("p") a:get("p").Cash=10 t.expect.truthy(a:save("p"))
+		local copy=adapter.get("p") copy.Cash=999 t.expect.equal(adapter.get("p").Cash,10)
+		b:get("p").Cash=20 t.expect.falsy(b:save("p"))
+		t.expect.equal(b:status("p").Status,"Conflict") t.expect.falsy(b:status("p").CanSave)
+		t.expect.equal(adapter.get("p").Cash,10)
+	end)
 	-- A genuinely absent save can safely become a new save.
 	t.test("missing data is writable and saved",function()
 		local s,db=fixture(nil) s:load("u_1")
@@ -51,7 +69,7 @@ return function(t)
 			t.expect.equal(s:status("u_1").Status,"InvalidData") t.expect.falsy(s:save("u_1")) t.expect.equal(db.writes,0)
 		end
 	end)
-	-- Studio sessions must not call even the injected write API.
+	-- Explicit read-only sessions must not call even the injected write API.
 	t.test("read only mode cannot write",function()
 		local s,db=fixture(nil,{readOnly=true}) s:load("u_1")
 		t.expect.equal(s:status("u_1").Status,"StudioReadOnly") s:release("u_1") t.expect.equal(db.writes,0)

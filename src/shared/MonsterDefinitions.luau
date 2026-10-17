@@ -12,12 +12,14 @@ export type EvolutionOption = {
 	Dominant: string?, Fallback: boolean?, Locked: boolean?,
 	RequiredLineage: string?, RequiredTags: {string}?, RequiredMutations: {string}?,
 	MinRarity: string?, Probability: number?, Presentation: any?,
+	RarityRule: string?, AscensionId: string?,
 }
 
 export type MonsterDefinition = {
 	Id: string,
 	DisplayName: string,
 	BaseMultiplier: number,
+	IncomeMultiplier: number?, TrainingMultiplier: number?,
 	GrowthRequired: number,
 	Rarity: string,
 	Color: Color3,
@@ -34,9 +36,9 @@ local monsters: { [string]: MonsterDefinition } = {
 		Rarity = "Common",
 		Color = Color3.fromRGB(150, 140, 90),
 		Evolutions = {
-			{ Result = "Fangling", Requirements = { Flesh = 40 } },
-			{ Result = "Mossback", Requirements = { Flora = 40 } },
-			{ Result = "Stonehide", Requirements = { Mineral = 40 } },
+			{ Result = "Fangling", Requirements = { Flesh = Stages.Stages[0].AffinityRequired } },
+			{ Result = "Mossback", Requirements = { Flora = Stages.Stages[0].AffinityRequired } },
+			{ Result = "Stonehide", Requirements = { Mineral = Stages.Stages[0].AffinityRequired } },
 		},
 	},
 	Fangling = {
@@ -142,6 +144,9 @@ for id, definition in monsters do
 	definition.Stage = definition.Stage or legacyStages[id]
 	definition.GrowthRequired = Stages.FormOverrides[id] or Stages.Stages[definition.Stage].GrowthRequired
 	definition.Lineage = "ProtoRex"
+	-- Phase 5 metadata; preserve every existing multiplier, no new bonuses.
+	definition.IncomeMultiplier = definition.BaseMultiplier
+	definition.TrainingMultiplier = definition.BaseMultiplier
 	definition.Visual = {ModelKey="Placeholder",Scale=Stages.Stages[definition.Stage].Scale}
 end
 for _, branch in monsters.ProtoRex.Evolutions do
@@ -168,7 +173,7 @@ for _, definition in monsters do
 	if definition.Stage==2 then table.insert(definition.Evolutions,{Result="ApexRex",Requirements={}}) end
 end
 monsters.ApexRex.Evolutions = {{Result="AscendedRex",Requirements={}}}
-monsters.AscendedRex.Evolutions = {{Result="MythicRex",Requirements={},Locked=true}}
+monsters.AscendedRex.Evolutions = {{Result="MythicRex",Requirements={},Locked=true,AscensionId="ProtoRexMythic"}}
 for id, definition in monsters do
 	for _, branch in definition.Evolutions do
 		branch.Id = id .. ":" .. branch.Result
@@ -176,6 +181,7 @@ for id, definition in monsters do
 		branch.TargetStage = monsters[branch.Result].Stage
 		branch.Growth = definition.GrowthRequired
 		branch.RequiredLineage = "ProtoRex"
+		branch.RarityRule = "Keep"
 	end
 end
 MonsterDefinitions.LegacyStages = legacyStages

@@ -80,11 +80,13 @@ Chase.Profiles = {
 	},
 } :: { [string]: Profile }
 
--- Player walk is 16; guardians stay faster than any carrier, so escape depends on
--- dodging fair telegraphs rather than outrunning. Telegraph length is not scaled down.
+-- Pursuit is relative to the fixed baseline carry speed BaselineWalk*(1-slowdown).
+-- Per-guardian Wake/SpeedRatio/CatchUpRatio/EngageDistance live in GuardianConfig;
+-- these are defaults for callers without a guardian row. Telegraphs are not scaled down.
 Chase.Timing = {
-	BasePursuitSpeed = 18,
-	Wake = 0.6,
+	BaselineWalk = 16,
+	SpeedRatio = 1.10,
+	Wake = 0.8,
 	BasePursuitDuration = 14,
 	AttackDelay = 2.6,
 	RecoveryFloor = 2.5,
@@ -132,9 +134,45 @@ function Chase.stronger(current: string?, incoming: string): string?
 	return current
 end
 
-function Chase.speed(rarity: string): number
+export type PursuitConfig = { SpeedRatio: number?, CatchUpRatio: number?, EngageDistance: number?, Wake: number? }
+
+-- Pursuit speed for the strongest threatened rarity against a carrier with the given
+-- worst-case slowdown. Beyond 2*EngageDistance the guardian closes at CatchUpRatio and
+-- blends linearly to SpeedRatio at EngageDistance. Never reads the player's WalkSpeed.
+function Chase.speed(rarity: string, config: PursuitConfig?, slowdown: number?, distance: number?): number
 	local profile = Chase.Profiles[rarity]
-	return if profile then Chase.Timing.BasePursuitSpeed * profile.Speed else Chase.Timing.BasePursuitSpeed
+	local engaged = (config and config.SpeedRatio) or Chase.Timing.SpeedRatio
+	local ratio = engaged
+	local engage = config and config.EngageDistance
+	if config and config.CatchUpRatio and engage and distance then
+		ratio = engaged + (config.CatchUpRatio - engaged) * math.clamp((distance - engage) / engage, 0, 1)
+	end
+	local carry = Chase.Timing.BaselineWalk * (1 - math.clamp(slowdown or 0, 0, 0.95))
+	return carry * ratio * (if profile then profile.Speed else 1)
+end
+
+function Chase.wake(config: PursuitConfig?): number
+	return (config and config.Wake) or Chase.Timing.Wake
+end
+
+-- Horizontal studs from a point to the guardian's oriented body footprint (0 inside).
+function Chase.catchGap(body: CFrame, size: Vector3, point: Vector3): number
+	local localPoint = body:PointToObjectSpace(point)
+	local dx = math.max(math.abs(localPoint.X) - size.X / 2, 0)
+	local dz = math.max(math.abs(localPoint.Z) - size.Z / 2, 0)
+	return math.sqrt(dx * dx + dz * dz)
+end
+
+-- Bounded launch velocity away from the guardian; a degenerate offset uses its facing.
+function Chase.knockback(from: Vector3, to: Vector3, facing: Vector3, horizontal: number, vertical: number): Vector3
+	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
+	if flat.Magnitude < 1e-3 then
+		flat = Vector3.new(facing.X, 0, facing.Z)
+	end
+	if flat.Magnitude < 1e-3 then
+		flat = Vector3.xAxis
+	end
+	return flat.Unit * horizontal + Vector3.new(0, vertical, 0)
 end
 
 function Chase.duration(rarity: string): number
@@ -462,7 +500,7 @@ end
 function Chase.validate(): { string }
 	local errors = {}
 	local timing = Chase.Timing
-	for _, key in { "BasePursuitSpeed", "Wake", "BasePursuitDuration", "AttackDelay", "ReturnDuration", "ReturnSpeed", "TargetUpdate", "AttackCommit", "SafeMargin",
+	for _, key in { "BaselineWalk", "SpeedRatio", "Wake", "BasePursuitDuration", "AttackDelay", "ReturnDuration", "ReturnSpeed", "TargetUpdate", "AttackCommit", "SafeMargin",
 		"DisengageHold", "EntranceStandoff", "HazardPad", "SafetyCap", "StuckWindow", "StuckDistance", "Spacing", "AttackStagger", "CrowdRadius",
 		"DodgeSafety", "CursedDodgeSafety" } do
 		local value = (timing :: any)[key]
@@ -470,16 +508,16 @@ function Chase.validate(): { string }
 			table.insert(errors, "Invalid chase timing: " .. key)
 		end
 	end
-	if timing.Wake > 0.8 or timing.Wake < 0.5 then
-		table.insert(errors, "Wake duration left the 0.5-0.8 second band")
+	if timing.Wake > 1 or timing.Wake < 0.5 then
+		table.insert(errors, "Wake duration left the 0.5-1.0 second band")
 	end
-	if timing.BasePursuitSpeed * (Chase.Profiles.Divine and Chase.Profiles.Divine.Speed or 1) >= 28 then
-		table.insert(errors, "Divine pursuit speed is too high to remain escapable")
+	if timing.SpeedRatio < 1 or timing.SpeedRatio > 1.25 then
+		table.insert(errors, "Engaged pursuit ratio left the 1.0-1.25 band")
 	end
 	if timing.DodgeSafety > 1 or timing.CursedDodgeSafety > timing.DodgeSafety then
 		table.insert(errors, "Dodge safety factors must not exceed real movement")
 	end
-	if timing.ReturnSpeed <= timing.BasePursuitSpeed then
+	if timing.ReturnSpeed <= Chase.speed("Divine") then
 		table.insert(errors, "Return travel must be faster than pursuit")
 	end
 	if timing.SafetyCap < 120 then

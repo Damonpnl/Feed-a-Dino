@@ -25,7 +25,7 @@ function State:transition(nextState, at, emit)
 	local rarity = self.Rarity or "Common"
 	if nextState == "WAKING" then
 		self.Activation += 1
-		self.Deadline = at + Chase.Timing.Wake
+		self.Deadline = at + Chase.wake(self.Config)
 	elseif nextState == "PURSUING" then
 		self.Deadline = at + Chase.attackDelay(rarity)
 	elseif nextState == "WARNING" then

@@ -73,4 +73,48 @@ return function(t)
 			t.expect.equal(definition.SpawnWeight, weights[id])
 		end
 	end)
+	local Config = require(Shared.GuardianConfig)
+	t.test("every guardian has validated per-area pursuit and catch tuning", function()
+		t.expect.equal(#Config.validate(), 0)
+		for _, c in Config.Areas do
+			t.expect.truthy(c.Wake >= 0.6 and c.Wake <= 1)
+			t.expect.truthy(c.SpeedRatio >= 1.05 and c.SpeedRatio <= 1.15)
+			t.expect.truthy(c.CatchReach >= 4 and c.CatchReach <= 6)
+		end
+	end)
+	t.test("engaged pursuit tracks the slowed baseline carry speed, not live WalkSpeed", function()
+		local c = Config.Areas.Grasslands
+		t.expect.near(Chase.speed("Common", c, 0, c.EngageDistance), 16 * c.SpeedRatio, 1e-6)
+		t.expect.near(Chase.speed("Common", c, 0.1, c.EngageDistance), 16 * 0.9 * c.SpeedRatio, 1e-6)
+		for _, slowdown in { 0, 0.02, 0.08, 0.2, 0.35 } do
+			local guardian = Chase.speed("Common", c, slowdown, 0)
+			t.expect.near(guardian / (16 * (1 - slowdown)), c.SpeedRatio, 1e-6)
+		end
+		-- A future 20-stud/s carrier would outrun the fixed Common engaged speed.
+		t.expect.truthy(Chase.speed("Common", c, 0, 0) < 20)
+	end)
+	t.test("catch-up blends from engaged speed to catch-up speed over one engage distance", function()
+		local c = Config.Areas.Grasslands
+		local engaged, far = 16 * c.SpeedRatio, 16 * c.CatchUpRatio
+		t.expect.near(Chase.speed("Common", c, 0, c.EngageDistance * 2), far, 1e-6)
+		t.expect.near(Chase.speed("Common", c, 0, 1000), far, 1e-6)
+		t.expect.near(Chase.speed("Common", c, 0, c.EngageDistance * 1.5), (engaged + far) / 2, 1e-6)
+		t.expect.truthy(Chase.speed("Divine", c, 0, 1000) < Chase.Timing.ReturnSpeed)
+		t.expect.truthy(Chase.speed("Divine", c, 0, 0) > Chase.speed("Common", c, 0, 0))
+	end)
+	t.test("catch gap measures from the oriented body box surface", function()
+		local size = Vector3.new(10, 12, 18)
+		local body = CFrame.lookAt(Vector3.new(100, 8, 0), Vector3.new(0, 8, 0))
+		t.expect.near(Chase.catchGap(body, size, Vector3.new(86, 4, 0)), 5, 1e-4)
+		t.expect.near(Chase.catchGap(body, size, Vector3.new(100, 4, 10)), 5, 1e-4)
+		t.expect.equal(Chase.catchGap(body, size, Vector3.new(101, 4, 1)), 0)
+		t.expect.truthy(Chase.catchGap(body, size, Vector3.new(80, 4, 0)) > 6)
+	end)
+	t.test("knockback is bounded and points away from the guardian", function()
+		local v = Chase.knockback(Vector3.new(0, 8, 0), Vector3.new(-5, 4, 0), Vector3.zAxis, 34, 26)
+		t.expect.near(v.X, -34, 1e-4) t.expect.near(v.Y, 26, 1e-4) t.expect.near(v.Z, 0, 1e-4)
+		local degenerate = Chase.knockback(Vector3.zero, Vector3.new(0, 3, 0), Vector3.new(0, 0, -1), 34, 26)
+		t.expect.near(degenerate.Z, -34, 1e-4)
+		t.expect.truthy(Config.Catch.Ragdoll < Config.Catch.Recovery and Config.Catch.Recovery <= 4)
+	end)
 end

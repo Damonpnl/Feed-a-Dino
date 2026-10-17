@@ -10,7 +10,7 @@ Evolution is data on the current monster. An option is chosen when:
 
 Phase 4B replaces the prototype first-match rule. Eligible specialized branches sort by stable ID: one advances automatically; multiple become a persistent player choice. A configured normal fallback applies only if no specialized branch qualifies. Dominant-affinity ties can qualify multiple branches. Hybrid minima must be met explicitly. See [PHASE4B_REPORT.md](PHASE4B_REPORT.md) for the graph and provisional balance.
 
-Each feed/choice advances at most one stage and spends only the source threshold. Excess Growth remains in `GrowthReserve`; cumulative `TotalGrowth`, affinities, families, mutations and the same owned pet identity survive. Owned map keys and `EquippedMonster` do not change; `EvolutionForm` changes instead. Stage 5 is locked pending 4D; Awakening is separate and not implemented.
+Each feed/choice advances at most one stage and spends only the source threshold. Excess Growth remains in `GrowthReserve`; cumulative `TotalGrowth`, affinities, families, mutations and the same owned pet identity survive. Owned map keys and `EquippedMonster` do not change; `EvolutionForm` changes instead. Phase 4D adds independent rarity resolution and declarative prestige eligibility. Stage 5 and separate Awakening remain disabled pending approved requirements; see [PHASE4D_REPORT.md](PHASE4D_REPORT.md).
 
 The starter is Proto Rex.
 

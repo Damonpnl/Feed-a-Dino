@@ -2,30 +2,52 @@
 local Shared=game.ReplicatedStorage.Shared
 local E,PD,D=require(Shared.EvolutionCalculator),require(Shared.PlayerData),require(Shared.MonsterDefinitions)
 local Store=require(game.ServerScriptService.Server.SessionStore)
+local Stages=require(Shared.GrowthStageDefinitions)
+local FIRST,AFFINITY=Stages.Stages[0].GrowthRequired,Stages.Stages[0].AffinityRequired
 local function pet(form,growth)
-	local r=PD.createMonster(form or "ProtoRex") r.Growth=growth or 50 r.TotalGrowth=r.Growth r.Revision=1 return r
+	local r=PD.createMonster(form or "ProtoRex") r.Growth=growth or FIRST r.TotalGrowth=r.Growth r.Revision=1 return r
 end
 return function(t)
 	local e=t.expect
 	t.test("complete reachable graph validates",function() e.equal(#E.validate(),0) end)
+	t.test("first evolution is the provisional 25 Growth with a reachable 20 affinity minimum",function()
+		e.equal(FIRST,25) e.equal(AFFINITY,20) e.equal(D.get("ProtoRex").GrowthRequired,25)
+		for _,edge in D.get("ProtoRex").Evolutions do
+			if not edge.Fallback then for _,value in edge.Requirements do e.equal(value,AFFINITY) end end
+		end
+		e.equal(Stages.Stages[1].GrowthRequired,80) e.equal(Stages.Stages[2].GrowthRequired,160)
+	end)
+	t.test("five Raw Meat feeds reach the first Flesh branch",function()
+		local r=pet(nil,0)
+		for _=1,4 do r.Growth+=5 r.TotalGrowth+=5 r.Flesh+=5 e.falsy(E.afterFeed(r)) e.equal(r.Stage,0) end
+		r.Growth+=5 r.TotalGrowth+=5 r.Flesh+=5 e.truthy(E.afterFeed(r)) e.equal(r.EvolutionForm,"Fangling")
+	end)
+	t.test("existing saves above the new threshold keep all Growth on evolution",function()
+		local r=pet(nil,45) r.Flesh=45 r.PetId="kept" e.truthy(E.afterFeed(r))
+		e.equal(r.Stage,1) e.equal(r.EvolutionForm,"Fangling") e.equal(r.Growth+r.GrowthReserve,45-FIRST)
+		e.equal(r.TotalGrowth,45) e.equal(r.PetId,"kept")
+	end)
 	for affinity,target in {Flesh="Fangling",Flora="Mossback",Mineral="Stonehide"} do
 		t.test(affinity.." dominant branch",function()
-			local r=pet() r[affinity]=40 e.truthy(E.afterFeed(r)) e.equal(r.EvolutionForm,target) e.equal(r.Stage,1)
+			local r=pet() r[affinity]=AFFINITY e.truthy(E.afterFeed(r)) e.equal(r.EvolutionForm,target) e.equal(r.Stage,1)
 		end)
 	end
 	t.test("threshold minus one cannot evolve; equality can",function()
-		local r=pet(nil,49) r.Flesh=40 e.falsy(E.afterFeed(r)) e.equal(r.Stage,0)
-		r.Growth=50 r.TotalGrowth=50 e.truthy(E.afterFeed(r)) e.equal(r.Stage,1) e.equal(r.Growth,0)
+		local r=pet(nil,FIRST-1) r.Flesh=AFFINITY e.falsy(E.afterFeed(r)) e.equal(r.Stage,0)
+		r.Growth=FIRST r.TotalGrowth=FIRST e.truthy(E.afterFeed(r)) e.equal(r.Stage,1) e.equal(r.Growth,0)
+	end)
+	t.test("affinity below the minimum falls back instead of branching",function()
+		local r=pet() r.Flesh=AFFINITY-1 e.truthy(E.afterFeed(r)) e.equal(r.EvolutionForm,"JuvenileRex")
 	end)
 	t.test("normal path advances one stage per action and stops at four",function()
 		local r=pet(nil,10000)
 		for stage=1,4 do e.truthy(E.afterFeed(r)) e.equal(r.Stage,stage) end
 		e.falsy(E.afterFeed(r)) e.equal(r.Stage,4) e.equal(r.TotalGrowth,10000)
-		e.equal(r.Growth+r.GrowthReserve,10000-50-80-160-3000)
+		e.equal(r.Growth+r.GrowthReserve,10000-FIRST-80-160-3000)
 	end)
 	t.test("high feed retains overflow without stage skipping",function()
 		local r=pet(nil,7000) r.Flesh=100 e.truthy(E.afterFeed(r))
-		e.equal(r.Stage,1) e.equal(r.Growth,80) e.equal(r.GrowthReserve,6870) e.equal(r.TotalGrowth,7000)
+		e.equal(r.Stage,1) e.equal(r.Growth,80) e.equal(r.GrowthReserve,7000-FIRST-80) e.equal(r.TotalGrowth,7000)
 	end)
 	for _,pair in {{"Flesh","Mineral","ArmoredRex"},{"Flesh","Flora","VenomRex"},{"Flora","Mineral","CrystalMossRex"}} do
 		t.test(pair[3].." explicit hybrid minima",function()
@@ -43,7 +65,7 @@ return function(t)
 		e.equal(r.Stage,1) e.falsy(E.select(r,token,"ProtoRex:Fangling"))
 	end)
 	t.test("selection revalidates authoritative affinities",function()
-		local r=pet() r.Flesh=40 r.Flora=40 E.afterFeed(r) r.Flora=0
+		local r=pet() r.Flesh=AFFINITY r.Flora=AFFINITY E.afterFeed(r) r.Flora=0
 		e.falsy(E.select(r,r.PendingEvolution.Token,"ProtoRex:Mossback")) e.equal(r.Stage,0)
 	end)
 	t.test("three-affinity requirements supported without granting a triple form",function()

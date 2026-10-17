@@ -117,6 +117,7 @@ function Service.pickup(player, id)
 	local state = ResourceService.getSnapshot()
 	if not state or state.Phase ~= "Normal" or type(id) ~= "string" then return false end
 	if not Guard.allow(player, "Pickup", 0.15) then return false end
+	if require(script.Parent.GuardianCatch).isRecovering(player) then return false end
 	local record, model = state.Records[id], worldModels[id]
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")

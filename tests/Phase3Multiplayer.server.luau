@@ -73,10 +73,15 @@ local ok,failure=xpcall(function()
 	-- Front starts at negative local X, so contacts occur early in the window.
 	a.Character.HumanoidRootPart.CFrame=warning.Frame*CFrame.new(-40,3,0)
 	b.Character.HumanoidRootPart.CFrame=warning.Frame*CFrame.new(-40,3,2)
-	check(waitFor(function() return not Carry.get(a) and not Carry.get(b) end,4),"One hazard drops both real carriers")
+	check(waitFor(function() return not Carry.get(a) and not Carry.get(b) end,4),"Guardian drops both real carriers")
 	check(a.Character.Humanoid.Health==hpA and b.Character.Humanoid.Health==hpB,"Both players survive")
 	check(Resource.getRecord(first).State=="DROPPED" and Resource.getRecord(second).State=="DROPPED","Both same-GUID drops exist")
-	check(acquire(b,first),"Cross-player recovery during hazard")
+	local Catch=require(Server.GuardianCatch)
+	-- A body catch during pursuit can drop B before the attack, so its recovery may already be over.
+	check(b:GetAttribute("GuardianCaughtTick")~=nil,"Hit carrier received guardian knockback")
+	check(not Catch.isRecovering(b) or not Spawn.pickup(b,first),"Hit carrier cannot re-pick during recovery")
+	check(waitFor(function() return not Catch.isRecovering(b) end,3),"Hit carrier recovers")
+	check(acquire(b,first),"Cross-player recovery after the guardian hit")
 	local during=Guardian.getSnapshot("Grasslands").State
 	check(during=="HAZARD" or during=="COOLDOWN" or during=="PURSUING","Lifecycle continues after a shared hit")
 	local old=a.Character

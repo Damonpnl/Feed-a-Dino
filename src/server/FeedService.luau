@@ -16,6 +16,7 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local rng=Random.new()
 local rolls=require(script.Parent.FeedRolls).new(function() return rng:NextNumber() end)
+local rarityRolls=require(script.Parent.FeedRolls).new(function() return rng:NextNumber() end)
 
 local FeedService = {}
 
@@ -69,7 +70,8 @@ function FeedService.preview(player, base, host)
 	local applied,forced = pcall(ResourceEffects.apply,projected,context.Definition,function() return 1 end) -- preview never rolls
 	if not applied then return {Available=false,Reason="Invalid catalyst effects; item kept"} end
 	projected.Revision += 1
-	local planned,_,outcome = pcall(EvolutionCalculator.afterFeed,projected,forced)
+	-- Preview never samples randomness or promises a probabilistic promotion.
+	local planned,_,outcome = pcall(EvolutionCalculator.afterFeed,projected,forced,function() return 0.9999999999999999 end)
 	if not planned then return {Available=false,Reason="Invalid evolution state; item kept"} end
 	previews[player] = {Ticket=ticket,Expires=os.clock()+30,Character=player.Character,Base=base,Host=host,
 		Data=context.Data,Record=context.Record,Snapshot=PlayerData.copy(context.Record),PetId=context.PetId,
@@ -87,12 +89,14 @@ local function commit(player, context)
 	-- All fallible calculations happen on a copy before either authoritative state changes.
 	local staged = PlayerData.copy(context.Record)
 	rolls.prune(function(id) return ResourceService.getRecord(id)~=nil end)
+	rarityRolls.prune(function(id) return ResourceService.getRecord(id)~=nil end)
 	local evolved = false
 	local ok = pcall(function()
-		local forced=ResourceEffects.apply(staged,context.Definition,rolls.forResource(context.Item.token))
+		local nextNumber=rolls.forResource(context.Item.token)
+		local forced=ResourceEffects.apply(staged,context.Definition,nextNumber)
 		staged.Revision = (staged.Revision or 0) + 1
 		assert(staged.Revision < math.huge and staged.Revision > (context.Record.Revision or 0))
-		evolved = EvolutionCalculator.afterFeed(staged,forced)
+		evolved = EvolutionCalculator.afterFeed(staged,forced,rarityRolls.forResource(context.Item.token))
 	end)
 	if not ok then return false, "Effect calculation failed; item kept" end
 	local data = context.Data

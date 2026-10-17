@@ -27,6 +27,22 @@ local function acquire(id)
 end
 local function drop() return Carry.forceDrop(player,player.Character,"Test") end
 local originalPower,originalFrame,root,anchored
+-- A stationary carrier is body-caught before any attack; stay outside catch reach but inside AttackCommit.
+local HOLD=22
+local function attackReached(area)
+	local state=Guardian.getSnapshot(area.Id).State
+	if state=="WARNING" or state=="HAZARD" then return true end
+	local model=workspace.GeneratedGameplay.Guardians:FindFirstChild(area.Guardian)
+	if model and root then
+		local g=model:GetPivot().Position
+		local flat=Vector3.new(root.Position.X-g.X,0,root.Position.Z-g.Z)
+		if flat.Magnitude<HOLD then
+			local dir=if flat.Magnitude>0.1 then flat.Unit else Vector3.xAxis
+			root.CFrame=CFrame.new(Vector3.new(g.X,root.Position.Y,g.Z)+dir*HOLD)
+		end
+	end
+	return false
+end
 local ok,failure=xpcall(function()
 	assert(waitFor(function() return player and player.Character and Data.get(player) and Resource.getSnapshot() end,10),"Initialization")
 	originalPower=Data.get(player).Power originalFrame=player.Character:GetPivot()
@@ -70,10 +86,7 @@ local ok,failure=xpcall(function()
 		local activation=Guardian.getSnapshot(area.Id).Activation
 		check(acquire(token),area.Id.." acquisition")
 		check(Guardian.getSnapshot(area.Id).State~="SLEEPING" and Guardian.getSnapshot(area.Id).Disturbance==0,area.Id.." immediate wake without a meter")
-		check(waitFor(function()
-			local state=Guardian.getSnapshot(area.Id).State
-			return state=="WARNING" or state=="HAZARD"
-		end,35),area.Id.." pursuit reaches telegraph")
+		check(waitFor(function() return attackReached(area) end,35),area.Id.." pursuit reaches telegraph")
 		local warning=Guardian.getSnapshot(area.Id)
 		check(warning.State=="WARNING" or warning.State=="HAZARD","Telegraph or attack is active")
 		check(warning.Activation==activation+1,area.Id.." one awakening")
@@ -91,12 +104,17 @@ local ok,failure=xpcall(function()
 		check(player.Character.Humanoid.Health==health and health>0,"Hazard causes no damage")
 		check(player.Character.Humanoid.WalkSpeed==16 and player:GetAttribute("CarriedName")=="","Hazard clears speed/HUD")
 		check(not drop(),"Duplicate contact/drop produces no resource")
-		-- Reclaim during the SAME active window: this player must not be processed twice.
+		local Catch=require(Server.GuardianCatch)
+		check(Catch.isRecovering(player) and not acquire(token),"Hit carrier cannot re-pick during recovery")
+		-- Recovery outlasts the active window; release it to prove the hit set alone blocks a second consequence.
+		Catch.release(player)
 		check(acquire(token),"Recovery during hazard")
 		root.CFrame=warning.Frame*CFrame.new(0,3,0)
 		check(waitFor(function() return Guardian.getSnapshot(area.Id).State=="COOLDOWN" or Guardian.getSnapshot(area.Id).State=="PURSUING" or Guardian.getSnapshot(area.Id).State=="RETURNING" end,8),"Hazard reaches recovery")
-		check(Carry.get(player) and Carry.get(player).token==token,"Hit set prevents duplicate consequence after recovery")
-		check(drop(),"Carrier drops after the attack window")
+		-- Cooldown pursuit may body-catch the carrier; only a second hazard drop is a failure.
+		local kept=Carry.get(player) and Carry.get(player).token==token
+		check(kept or player:GetAttribute("DropReason")=="GuardianCatch:"..area.Id,"Hit set prevents duplicate consequence after recovery")
+		if kept then check(drop(),"Carrier drops after the attack window") end
 		check(waitFor(function() return Guardian.getSnapshot(area.Id).State=="SLEEPING" end,20),"Returns to sleeping after the carrier is clear")
 		check(Guardian.getSnapshot(area.Id).Disturbance==0,"Post-attack baseline restored")
 		check(#Spawn.validate()==0,"No duplicate/orphan records")
@@ -106,10 +124,7 @@ local ok,failure=xpcall(function()
 	Guardian.resetAll()
 	local token=available("Grasslands")
 	check(acquire(token),"Outside-footprint acquisition")
-	check(waitFor(function()
-		local state=Guardian.getSnapshot("Grasslands").State
-		return state=="WARNING" or state=="HAZARD"
-	end,35),"Outside test reaches an attack")
+	check(waitFor(function() return attackReached(Areas.get("Grasslands")) end,35),"Outside test reaches an attack")
 	local warning=Guardian.getSnapshot("Grasslands")
 	root.CFrame=warning.Frame*CFrame.new(0,3,35)
 	check(waitFor(function()

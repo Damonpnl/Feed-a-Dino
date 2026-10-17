@@ -42,7 +42,7 @@ local ok,failure=xpcall(function()
 	if not host:IsA("BasePart") then host=host:FindFirstChildWhichIsA("BasePart",true) end
 	originalFrame=player.Character:GetPivot() player.Character.HumanoidRootPart.Anchored=true
 	home()
-	check(not Feed.preview(player,base,host).Available and not Data.isWritable(player),"Ordinary Studio remains read-only")
+	check(Data.isWritable(player) and Data.getStatus(player).Backend=="StudioMemory","Ordinary Studio uses writable temporary memory")
 	local data=session:load(key)
 	data.Power=1e12 data.EquippedMonster="MagmaRex"
 	data.Monsters.MagmaRex=PD.createMonster("MagmaRex","Epic")

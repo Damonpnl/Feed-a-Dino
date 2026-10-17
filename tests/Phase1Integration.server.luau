@@ -29,8 +29,8 @@ end
 local ok,failure=xpcall(function()
 	repeat task.wait() player=game.Players:GetPlayers()[1] until player and player.Character and Data.get(player) and player:GetAttribute("AssignedBaseName")
 	local data=Data.get(player) original=PlayerData.copy(data) frame=player.Character:GetPivot()
-	check(Data.getStatus(player).Status=="StudioReadOnly" and not Data.getStatus(player).CanSave,"Studio storage isolation")
-	check(not Data.save(player),"Studio save must be rejected")
+	check(Data.getStatus(player).Backend=="StudioMemory" and Data.isWritable(player),"Studio writable memory isolation")
+	check(Data.save(player),"Studio save uses the memory backend")
 	local leaderstats=0 for _,child in player:GetChildren() do if child.Name=="leaderstats" then leaderstats+=1 end end
 	check(leaderstats==1 and not player.leaderstats:FindFirstChild("Meat"),"Exactly one authoritative leaderstats")
 	local base=workspace.Bases:FindFirstChild(player:GetAttribute("AssignedBaseName"))
@@ -67,6 +67,8 @@ local ok,failure=xpcall(function()
 	task.wait(0.21) go(host)
 	data.Monsters={ProtoRex=PlayerData.createMonster("ProtoRex")} data.EquippedMonster="ProtoRex"
 	local feeds=data.Stats.Feeds
+	-- Failure-state guards remain required even though ordinary Studio is writable.
+	Data.getStatus=function(p) return if p==player then {Status="LoadFailed",CanSave=false,Closing=false} else originalStatus(p) end
 	check(not Feed.feed(player,base,host),"Phase4A rejects read-only feeding without consuming")
 	task.wait(0.21)
 	-- Test-only writable status over disposable Studio data; production storage remains disabled.
