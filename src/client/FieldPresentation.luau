@@ -14,14 +14,21 @@ Presentation.RareSpawned, Presentation.SoundRequested = rareSpawned.Event, sound
 local running, connections, queue = false, {}, {}
 local screen, label, frame, lightingTween, currentTween, savedLighting = nil, nil, nil, nil, nil, nil
 local processing, worker = false, nil
-local countdown, sizeConstraint, textConstraint = nil, nil, nil
+local countdown, sizeConstraint, textConstraint, closureWarning = nil, nil, nil, nil
 local currentPriority, countdownClock = 0, 0
 local activeSounds, seen, seenOrder = {}, {}, {}
 local function refreshCountdown(field)
 	if not countdown then return end
-	if field:GetAttribute("Phase") == "Reset" then countdown.Text = "RESOURCES RESETTING..." return end
+	if field:GetAttribute("Phase") == "Reset" then
+		countdown.Text = "RESOURCES RESETTING..."
+		closureWarning.Text="FIELD CLOSED — INSIDE CARRIERS FORFEIT THEIR ITEM"
+		closureWarning.Visible=true return
+	end
 	local remaining = math.max(0, math.ceil((field:GetAttribute("NextResetAt") or workspace:GetServerTimeNow()) - workspace:GetServerTimeNow()))
 	countdown.Text = string.format("RESOURCES RESET IN %d:%02d", math.floor(remaining / 60), remaining % 60)
+	closureWarning.Visible=remaining<=60
+	local band=if remaining<=10 then "FINAL 10 SECONDS" elseif remaining<=30 then "30 SECOND WARNING" else "60 SECOND WARNING"
+	closureWarning.Text=band.." — LEAVE THE FIELD OR LOSE YOUR CARRIED ITEM"
 end
 local function phaseChanged(field)
 	refreshCountdown(field)
@@ -109,9 +116,16 @@ function Presentation:Start()
 	countdown.BackgroundTransparency, countdown.TextSize = 0.3, 20
 	countdown.BackgroundColor3, countdown.TextColor3 = Color3.fromRGB(20,22,28), Color3.new(1,1,1)
 	countdown.Font, countdown.Parent = Enum.Font.GothamBold, screen
+	closureWarning=Instance.new("TextLabel") closureWarning.Name="ClosureWarning"
+	closureWarning.AnchorPoint=Vector2.new(.5,0) closureWarning.Position=UDim2.new(.5,0,0,42)
+	closureWarning.Size=UDim2.new(.92,0,0,42) closureWarning.BackgroundTransparency=.2
+	closureWarning.BackgroundColor3=Color3.fromRGB(80,25,15) closureWarning.TextColor3=Color3.fromRGB(255,235,180)
+	closureWarning.TextWrapped=true closureWarning.TextSize=17 closureWarning.Font=Enum.Font.GothamBold closureWarning.Parent=screen
+	closureWarning.TextScaled=true
+	local warningBounds=Instance.new("UITextSizeConstraint") warningBounds.MinTextSize=12 warningBounds.MaxTextSize=17 warningBounds.Parent=closureWarning
 	frame = Instance.new("Frame")
 	frame.AnchorPoint = Vector2.new(0.5, 0)
-	frame.Position = UDim2.new(0.5, 0, 0, 48)
+	frame.Position = UDim2.new(0.5, 0, 0, 88)
 	frame.Size = UDim2.new(0.9, 0, 0, 76)
 	frame.BackgroundColor3 = Color3.fromRGB(22, 18, 35)
 	frame.Visible, frame.Parent = false, screen
@@ -153,7 +167,7 @@ function Presentation:Stop()
 	savedLighting = nil
 	if screen then screen:Destroy() end
 	screen, frame, label, lightingTween, currentTween = nil, nil, nil, nil, nil
-	countdown, sizeConstraint, textConstraint = nil, nil, nil
+	countdown, sizeConstraint, textConstraint, closureWarning = nil, nil, nil, nil
 end
 function Presentation:GetStats() return {Connections=#connections, Queued=#queue, Running=running, Priority=currentPriority} end
 return Presentation

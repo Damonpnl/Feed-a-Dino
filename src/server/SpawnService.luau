@@ -148,9 +148,47 @@ function Service.pickup(player, id)
 	if data then data.DiscoveredAreas[record.AreaId] = true end
 	return true
 end
+function Service.devGrant(player, areaId, resourceId, curseMode, nodeId)
+	if not running then return nil, "Field is not running" end
+	Service.step()
+	local CarryService = require(script.Parent.CarryService)
+	if CarryService.get(player) then return nil, "Already carrying something" end
+	local definition = Resources.get(resourceId)
+	local data = require(script.Parent.DataService).get(player)
+	if not definition or not data or data.Power < definition.PowerRequired then return nil, "Power is below the resource requirement" end
+	local id, err = ResourceService.devReplace(areaId, resourceId, nodeId)
+	if not id then return nil, err end
+	if curseMode == "none" then
+		CarryService.prepareAssignment(id, { Rarity = definition.Rarity, Title = "", Effects = {} })
+	elseif curseMode == "cursed" then
+		local assignment = require(Shared.CarryDebuff).assign(definition.Rarity, function() return 0 end)
+		if not assignment or #assignment.Effects == 0 then
+			ResourceService.releaseToken(areaId, id)
+			return nil, "That resource has no curse profile"
+		end
+		CarryService.prepareAssignment(id, assignment)
+	end
+	local previous = ResourceService.claim(player, id)
+	if not previous then
+		ResourceService.releaseToken(areaId, id)
+		return nil, "Claim was rejected"
+	end
+	sync()
+	local ok, accepted = pcall(CarryService.give, player, resourceId, areaId, id)
+	if not ok or not accepted then
+		if not ok then CarryService.drop(player) end
+		ResourceService.rollbackClaim(id, player.UserId, previous)
+		sync()
+		return nil, if ok then "Carry rejected the resource" else "Carry failed"
+	end
+	sync()
+	local claimed = ResourceService.getRecord(id)
+	require(script.Parent.GuardianService).onPickup(player, id, claimed.ClaimVersion)
+	return id
+end
+
 function Service.step()
-	local _, _, resetOccurred = ResourceService.step()
-	if resetOccurred then require(script.Parent.GuardianService).resetAll() end
+	ResourceService.step()
 end
 function Service.start()
 	if running then return end
@@ -168,11 +206,14 @@ function Service.start()
 	if not rareRemote then rareRemote = Instance.new("RemoteEvent") rareRemote.Name = "FieldRareSpawn" rareRemote.Parent = remotes end
 	for _, node in nodes do markers[node.Id] = node.Marker end
 	ResourceService.initialize(nodes, sync)
+	local lockdown=require(script.Parent.FieldLockdown)
+	lockdown.initialize(root)
+	ResourceService.setLifecycle(lockdown.reconcile)
 	running = true
 	sync()
 	print("[ResourceValidation] PASS 40 launch resources, 5 areas, 25 nodes")
-	task.spawn(function()
-		while running do task.wait(0.25) Service.step() end
-	end)
+	-- Deadline/closed-entry checks every server frame. Resource/state work stays on the
+	-- existing service, with no competing timers. No spatial queries per player.
+	game:GetService("RunService").Heartbeat:Connect(function() if running then Service.step() end end)
 end
 return Service
