@@ -1,6 +1,6 @@
 # Phase 4D — pet rarity, Ascension and Awakening framework
 
-Date: 2026-10-16. Phase 4D only. No Phase 5 economy/trainer work, live prestige
+Date: 2026-10-17 (implementation began October 16). Phase 4D only. No Phase 5 economy/trainer work, live prestige
 release, production DataStore access, place publication or final art.
 
 ## Inspection and baseline
@@ -134,6 +134,67 @@ The first serialized Phase3Integration attempt stopped at 14 checks with
 field's resources. This attempt is not counted as a pass; the regression was
 restarted with a fresh Play field rather than altering gameplay spawn rules.
 
+## Final resumed verification — October 17
+
+The Phase 4D code and Studio-memory fix had been committed as `86228f2` before
+this continuation. That commit also includes separately requested gameplay tuning
+(starter cost 25, affinity minimum 20). New uncommitted radial-biome work was
+already present. It was preserved; no gameplay/economy changes were made while
+finishing this report.
+
+- Current combined unit suite: **337/337 PASSED** in fresh Studio Play, including
+  the Phase 4D contracts and subsequent tuning/radial tests.
+- Phase4DIntegration rerun: **18/18 PASSED** against the current combined sources.
+- Phase4BIntegration: **34/34 PASSED**; Phase4BPresentation: **6/6 PASSED**, including
+  an actual MCP mouse click selecting Mossback and forged/replayed remote checks.
+- FieldRuntimeSmoke: **14/14 PASSED**, actual dropped-item expiry, node refill,
+  unique resource identity, carried visual/weld and slowdown cleanup.
+- The first resumed 4B run failed at its hardcoded `Growth == 50` overflow
+  assertion. The authoritative later tuning sets the starter cost to 25, so the
+  expected remainder from 100 Growth is 75. Updated only the server/client test
+  fixtures to read the configured threshold, assert bounded current Growth plus
+  all retained reserve, and verify the displayed cost. Gameplay was correct and
+  unchanged. The failed attempt is not counted as a pass.
+- Repository/Studio source audit: **104/104 mapped Luau sources matched** by
+  normalized UTF-8 length/digest, with **zero duplicate mapped paths**. Includes
+  the other work's mapped PlayFixtures; those copies were not edited.
+- Rojo build and `git diff --check`: **PASSED**.
+- Final Edit audit: **zero duplicate script paths**, **zero definition errors**,
+  unit runner disabled, no GeneratedGameplay runtime fixtures; Play stopped.
+  Current saved map has 1412 BaseParts and geometry digest 1397450940. This differs
+  from the historical Phase 1 digest; no Workspace edits were made by this task,
+  and no claim of historical geometry equality is made.
+- Console inspected: no new gameplay-breaking script errors. Existing asset-type
+  warnings for asset 203785492 and Roblox CorePackages FoundationProvider warnings
+  were present before and during this continuation; left outside Phase 4D scope.
+
+The separate [radial layout report](RADIAL_BIOME_LAYOUT_REPORT.md) records a
+subsequent **127-check Phase3Integration pass** after correcting the fixture's
+off-floor hold point, plus other single-/multiplayer regressions. Those results
+are attributed to that report, not claimed as new runs in this continuation.
+The earlier incomplete guardian retry is not silently counted as a pass here.
+
+## Acceptance status
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| Independent pet rarity; no Divine-feed shortcut | PASSED | Unit contracts and 18 real-service checks |
+| Eligible promotions, ceilings, no ordinary demotion | PASSED | Injected deterministic/chance boundary fixtures; live Keep rules |
+| Accepted result cannot be rerolled | PASSED | Retry-stable server tickets, consume-failure/concurrency test, persisted history and choice replay |
+| Stage 5 rejects incomplete requirements | PASSED | Individual predicate tests and unreleased live-path rejection |
+| Qualified Stage 5 fixtures pass | PASSED | Pure eligibility and isolated existing-graph transition |
+| Awakening rejects wrong catalyst/stage/lineage | PASSED | Pure staged-copy fixtures, no live acquisition endpoint |
+| Qualified Awakening fixture and separate identity | PASSED | Successful fixture, replay rejection and memory save/reload |
+| Unreleased prestige unobtainable normally | PASSED | Locked edge, unapproved/disabled definitions and real-service rejection |
+| Older saves and identity preserved | PASSED (isolated storage) | Additive normalization, opaque fields and SessionStore round trips |
+| Authoritative bounded multiplier metadata | PASSED | Every form/legacy floor preserved, distinct channels and total-product bounds |
+| Earlier phase regressions | PASSED in listed scope | 337 current units; 4A/4C/Phase1 results above; fresh 4B client/server; separately attributed radial report |
+| Production cloud durability / physical devices | NOT TESTED | Deliberately outside this isolated scope |
+
+Phase 4D is complete within the verified framework scope. Live promotions and
+prestige acquisition remain disabled pending the approvals below. Phase 5 was
+not started.
+
 ## Files
 
 Created production: PetProgressionConfig, PetRarity, PrestigeCalculator,
@@ -144,7 +205,9 @@ PlayerData.luau (type additions), DefinitionValidation.luau;
 src/server/FeedService.luau and MonsterService.luau.
 
 Created tests: tests/unit/Cases/PetPrestige_Test.luau and
-tests/Phase4DIntegration.server.luau. Documentation: this report, CURRENT_STATE
+tests/Phase4DIntegration.server.luau. Updated on resume: Phase4BIntegration and
+Phase4BPresentation fixtures (configured threshold assertions only).
+Documentation: this report, CURRENT_STATE
 and LINEAGE_SYSTEM. No repository files deleted. DataService/SessionStore and
 their test edits in the working tree belong to the preceding Studio-memory fix,
 not Phase 4D.

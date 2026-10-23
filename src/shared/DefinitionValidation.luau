@@ -23,7 +23,10 @@ function Validation.config()
 	if ok then for _,message in evolutionErrors do table.insert(errors,message) end
 	else table.insert(errors,"Malformed evolution graph: "..tostring(evolutionErrors)) end
 	for _,message in require(script.Parent.GuardianConfig).validate() do table.insert(errors,message) end
-	local warnings = {"Trainer prices, initial ownership and TrainingLevel migration are unspecified; new trainer purchases remain disabled."}
+	for _,message in require(script.Parent.BiomeLayout).validate() do table.insert(errors,message) end
+	for _,message in require(script.Parent.EconomyCalculator).validate() do table.insert(errors,message) end
+	for _,message in require(script.Parent.MovementCalculator).validate() do table.insert(errors,message) end
+	local warnings = {"Phase 5A trainer prices are PROVISIONAL_BALANCE; legacy TrainingLevel is retained as a gain floor."}
 	local function check(ok,message) if not ok then table.insert(errors,message) end return ok end
 	local function number(v,min) return type(v)=="number" and v==v and v<math.huge and v> -math.huge and v>=min end
 	local function text(v) return type(v)=="string" and #v>0 end

@@ -3,6 +3,8 @@ assert(game:GetService("RunService"):IsStudio())
 local S,Shared=game.ServerScriptService.Server,game.ReplicatedStorage.Shared
 local Data,Monster,Feed,Spawn,Resource,Carry,Guardian=require(S.DataService),require(S.MonsterService),require(S.FeedService),require(S.SpawnService),require(S.ResourceService),require(S.CarryService),require(S.GuardianService)
 local PD,E,Store=require(Shared.PlayerData),require(Shared.EvolutionCalculator),require(S.SessionStore)
+local Stages=require(Shared.GrowthStageDefinitions)
+local starterCost=Stages.Stages[0].GrowthRequired
 local p=game.Players:GetPlayers()[1]
 local originalGet,originalStatus=Data.get,Data.getStatus
 local saved local sessions=Store.new({get=function() return PD.copy(saved) end,update=function(_,fn) saved=fn(saved) return PD.copy(saved) end})
@@ -39,7 +41,7 @@ local ok,failure=xpcall(function()
 	p.Character.HumanoidRootPart.Anchored=true home()
 	d.Monsters.Fangling=PD.createMonster("Fangling") d.Monsters.Fangling.Growth=71 d.Monsters.Fangling.TotalGrowth=71
 	local other=d.Monsters.Fangling
-	local r=d.Monsters.ProtoRex r.PetId="same-owned-guid" r.Growth=49 r.TotalGrowth=49 r.Flesh=100
+	local r=d.Monsters.ProtoRex r.PetId="same-owned-guid" r.Growth=starterCost-1 r.TotalGrowth=starterCost-1 r.Flesh=100
 	Monster.publish(p) local oldVisual=workspace.GeneratedGameplay.Monsters[p.Name.."_Monster"]
 	local id=acquire() local preview=Feed.preview(p,base,host)
 	check(preview.Available and preview.LegacyOutcome:find("Fangling",1,true),"Pickup to evolution preview")
@@ -71,7 +73,10 @@ local ok,failure=xpcall(function()
 	local req=request(r) local wins=0
 	task.wait(0.21) for _=1,20 do task.spawn(function() if Monster.chooseEvolution(p,req) then wins+=1 end end) end
 	check(wins==1 and d.Monsters.ProtoRex.Stage==1 and not d.Monsters.ProtoRex.PendingEvolution,"Concurrent choices commit once")
-	check(d.Monsters.ProtoRex.Growth==50 and d.Monsters.ProtoRex.TotalGrowth==100,"Choice spends threshold and retains overflow")
+	local remaining=100-starterCost
+	check(d.Monsters.ProtoRex.Growth==math.min(remaining,Stages.Stages[1].GrowthRequired)
+		and d.Monsters.ProtoRex.Growth+d.Monsters.ProtoRex.GrowthReserve==remaining
+		and d.Monsters.ProtoRex.TotalGrowth==100,"Choice spends configured threshold and retains all overflow")
 	task.wait(0.21) check(not Monster.chooseEvolution(p,req),"Choice replay rejected")
 	check(sessions:release("4b-fixture"),"Evolution persisted") d=sessions:load("4b-fixture")
 	check(d.Monsters.ProtoRex.Stage==1 and d.Monsters.ProtoRex.EvolutionForm=="Fangling" and d.Monsters.ProtoRex.PetId=="same-owned-guid","Stage form and identity restored")

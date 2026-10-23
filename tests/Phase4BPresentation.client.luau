@@ -12,7 +12,8 @@ connection=p:GetAttributeChangedSignal("Phase4BTest"):Connect(function()
 		local panel=p.PlayerGui.MonsterHud.EvolutionChoice
 		check(panel.Visible and panel:FindFirstChild("Fangling") and panel:FindFirstChild("Mossback"),"Persistent choice UI visible")
 		check(panel.AbsoluteSize.X<=480 and panel.AbsoluteSize.Y<=420,"Choice UI bounded")
-		check(panel.Mossback.Text:find("Stage 1",1,true) and panel.Mossback.Text:find("50 Growth",1,true),"Choice displays stage and cost")
+		local cost=require(game.ReplicatedStorage.Shared.GrowthStageDefinitions).Stages[0].GrowthRequired
+		check(panel.Mossback.Text:find("Stage 1",1,true) and panel.Mossback.Text:find(tostring(cost).." Growth",1,true),"Choice displays stage and configured cost")
 		local state=game:GetService("HttpService"):JSONDecode(p:GetAttribute("PendingEvolution"))
 		local request={PetKey=p:GetAttribute("OwnedPetKey"),Token=state.Token,BranchId="ProtoRex:Mossback"}
 		remote:FireServer("Evolve",{PetKey=request.PetKey,Token="forged",BranchId=request.BranchId}) task.wait(0.3)
