@@ -81,6 +81,7 @@ function DataService.publish(player: Player)
 	if not data or player.Parent ~= Players then return end
 	player:SetAttribute("Cash", data.Cash)
 	player:SetAttribute("Power", data.Power)
+	player:SetAttribute("SlowMode", data.SlowMode == true)
 	publishLeaderstats(player, data)
 end
 function DataService.load(player: Player)

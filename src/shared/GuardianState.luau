@@ -8,8 +8,8 @@ State.Transitions = {
 	SLEEPING = { WAKING = true },
 	WAKING = { PURSUING = true },
 	PURSUING = { WARNING = true, RETURNING = true },
-	WARNING = { HAZARD = true },
-	HAZARD = { COOLDOWN = true },
+	WARNING = { HAZARD = true, RETURNING = true },
+	HAZARD = { COOLDOWN = true, RETURNING = true },
 	COOLDOWN = { PURSUING = true, RETURNING = true },
 	RETURNING = { SLEEPING = true, PURSUING = true },
 }
@@ -76,6 +76,8 @@ function State:step(now, emit, sample, context)
 			self:transition("HAZARD", self.Deadline, emit)
 		elseif self.State == "HAZARD" then
 			if sample then sample(self.HazardStart, math.min(now, self.Deadline)) end
+			-- Contact can reconcile the reset cutoff synchronously; never finish a stale attack.
+			if self.State~="HAZARD" then break end
 			if now >= self.Deadline then
 				attacked = true
 				self:transition("COOLDOWN", self.Deadline, emit)

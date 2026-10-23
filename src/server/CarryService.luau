@@ -14,10 +14,11 @@ local ResourceService = require(script.Parent.ResourceService)
 local Guard = require(script.Parent.InteractionGuard)
 local Format = require(ReplicatedStorage.Shared.NumberFormat)
 local CarryDebuff = require(ReplicatedStorage.Shared.CarryDebuff)
+local Movement = require(ReplicatedStorage.Shared.MovementCalculator)
+local MovementConfig = require(ReplicatedStorage.Shared.MovementConfig)
+local Catch = require(script.Parent.GuardianCatch)
 
 local CarryService = {}
-
-local BASE_WALK_SPEED = 16
 
 export type CarriedItem = {
 	resourceId: string,
@@ -31,6 +32,8 @@ local curseStart: { [Player]: number } = {}
 -- Keyed by resource token so a dropped item keeps its curse when recovered.
 local assignments: { [string]: CarryDebuff.Assignment } = {}
 local curseRandom = Random.new()
+-- Studio developer panel only. Never written to the save.
+local testBase: { [Player]: number } = {}
 local visuals: { [Player]: Model } = {}
 local carryCharacters: {[Player]: Model} = {}
 local characterConnections: {[Player]: {RBXScriptConnection}} = {}
@@ -76,12 +79,31 @@ local function applySpeed(player: Player)
 	if humanoid == nil then
 		return
 	end
-	if carried[player] == nil then
-		humanoid.WalkSpeed = BASE_WALK_SPEED
-		return
-	end
+	local data = DataService.get(player)
+	local power = if data then data.Power else 0
+	local slow = data ~= nil and data.SlowMode == true
+	local recovery = Catch.getSnapshot(player)
 	local applied = currentApplied(player)
-	humanoid.WalkSpeed = BASE_WALK_SPEED * (1 - applied)
+	local ragdolled = recovery ~= nil and not recovery.Standing
+	local override = testBase[player]
+	local speed: number
+	if override == nil then
+		speed = Movement.effective(power, slow, carried[player] ~= nil, applied, ragdolled)
+	elseif ragdolled then
+		speed = 0
+	else
+		local base = if slow then MovementConfig.PrecisionSpeed else override
+		if carried[player] ~= nil then
+			base = math.min(base, Movement.carryBase(power))
+			speed = if applied ~= applied or math.abs(applied) == math.huge then 0 else base * (1 - math.clamp(applied, 0, CarryDebuff.MaxTotal))
+		else
+			speed = base
+		end
+	end
+	if humanoid.WalkSpeed ~= speed then humanoid.WalkSpeed = speed end
+	player:SetAttribute("BaseMovementSpeed", Movement.base(power))
+	player:SetAttribute("DevTestBaseOverride", override or -1)
+	player:SetAttribute("EffectiveMovementSpeed", speed)
 	if visuals[player] ~= nil then
 		player:SetAttribute("CarrySlowdown", applied)
 		player:SetAttribute("CarryDebuff", currentExtra(player))
@@ -242,6 +264,7 @@ function CarryService.consume(player: Player): CarriedItem?
 end
 
 function CarryService.consumeOwned(player: Player, token: string): boolean
+	ResourceService.step() -- Cutoff resolves before feeding can consume or grant effects.
 	local item = carried[player]
 	if not item or item.token ~= token or not ResourceService.consume(player, token) then return false end
 	assignments[token] = nil
@@ -255,28 +278,81 @@ function CarryService.consumeOwned(player: Player, token: string): boolean
 	return true
 end
 
-local function returnOrRelease(player: Player, item: CarriedItem, position: Vector3?)
-	if position ~= nil and ResourceService.returnToWorld(item.areaId, item.resourceId, item.token, position, player.UserId) then return end
+local function returnOrRelease(player: Player, item: CarriedItem, position: Vector3?): boolean
+	if position ~= nil and ResourceService.returnToWorld(item.areaId, item.resourceId, item.token, position, player.UserId) then return true end
 	-- Invalid/missing character geometry must not leave a ghost carried record.
-	ResourceService.releaseToken(item.areaId, item.token)
+	-- False means reconciliation already resolved the record (for example forfeiture).
+	return ResourceService.releaseToken(item.areaId, item.token)
 end
 
 -- One no-yield consequence path for input, guardians and character lifecycle.
 -- An old character cannot resolve a newer character's carry session.
-function CarryService.forceDrop(player: Player, character: Model?, reason: string): boolean
+function CarryService.forceDrop(player: Player, character: Model?, reason: string, returnToSpawn: boolean?): boolean
+	ResourceService.step() -- An inside carrier at closure forfeits, never creates a recovery drop.
 	if not character or carryCharacters[player] ~= character then return false end
 	local root = character:FindFirstChild("HumanoidRootPart")
+	local position = if root and root:IsA("BasePart") then root.Position else nil
+	if returnToSpawn then
+		local current = carried[player]
+		local record = current and ResourceService.getRecord(current.token)
+		-- Preserve the original radial spawn, not the carrier's hit position or a
+		-- node slot that may now contain a different resource. Never mint a new GUID.
+		position = record and record.SpawnPosition or nil
+	end
 	local item = CarryService.drop(player)
 	if not item then return false end
-	returnOrRelease(player, item, if root and root:IsA("BasePart") then root.Position else nil)
+	if not returnOrRelease(player, item, position) then return false end
 	player:SetAttribute("DropReason", reason)
 	player:SetAttribute("DropTick", workspace:GetServerTimeNow())
 	return true
 end
 
--- Sole server movement calculation: training changes Power, not WalkSpeed.
--- No movement upgrade formula exists; retain the locked 16 * (1 - slowdown).
+-- Reset-only terminal removal, not a drop or feed. ResourceService owns the GUID.
+function CarryService.forfeit(player: Player): boolean
+	local item=carried[player]
+	local removed=ResourceService.forfeitOwned(player)
+	if item then assignments[item.token]=nil end
+	pruneAssignments()
+	CarryService.drop(player)
+	if removed then player:SetAttribute("DropReason","FieldResetForfeit") end
+	return removed
+end
+
+-- Sole WalkSpeed writer. Power is read from DataService, not the replicated HUD.
 CarryService.recalculateMovement = applySpeed
+
+function CarryService.setTestBaseOverride(player: Player, speed: number?): boolean
+	if not RunService:IsStudio() then return false end
+	if speed == nil then
+		testBase[player] = nil
+	elseif type(speed) ~= "number" or speed ~= speed or speed < 16 or speed > MovementConfig.MaxSpeed then
+		return false
+	else
+		testBase[player] = speed
+	end
+	applySpeed(player)
+	return true
+end
+
+function CarryService.prepareAssignment(token: string, assignment: CarryDebuff.Assignment): boolean
+	if type(token) ~= "string" or type(assignment) ~= "table" or type(assignment.Rarity) ~= "string" or type(assignment.Effects) ~= "table" then
+		return false
+	end
+	if #assignment.Effects > 4 then return false end
+	assignments[token] = assignment
+	return true
+end
+
+function CarryService.setSlowMode(player: Player, enabled: any): boolean
+	if type(enabled) ~= "boolean" or not Guard.allow(player,"SlowMode",MovementConfig.RequestInterval)
+		or not DataService.isWritable(player) then return false end
+	local data=DataService.get(player)
+	if not data then return false end
+	data.SlowMode=enabled -- Explicit desired state makes duplicate requests idempotent.
+	DataService.publish(player)
+	applySpeed(player)
+	return true
+end
 
 function CarryService.start()
 	if started then return end
@@ -302,6 +378,12 @@ function CarryService.start()
 		if not Guard.allow(player, "Drop", 0.2) then return end
 		CarryService.forceDrop(player, player.Character, "Manual")
 	end)
+	local slowRemote=remotes:FindFirstChild("SetSlowMode")
+	if not slowRemote then
+		slowRemote=Instance.new("RemoteEvent") slowRemote.Name="SetSlowMode" slowRemote.Parent=remotes
+	end
+	assert(slowRemote:IsA("RemoteEvent"),"SetSlowMode must be a RemoteEvent")
+	slowRemote.OnServerEvent:Connect(CarryService.setSlowMode)
 
 	local function hookCharacter(player: Player, character: Model)
 		local prior = characterConnections[player]
@@ -320,6 +402,9 @@ function CarryService.start()
 	end
 
 	local function hookPlayer(player: Player)
+		for _,name in {"Power","SlowMode","DataStatus","GuardianRagdoll","GuardianRecoverUntil"} do
+			player:GetAttributeChangedSignal(name):Connect(function() applySpeed(player) end)
+		end
 		player.CharacterRemoving:Connect(function(character)
 			CarryService.forceDrop(player, character, "CharacterRemoving")
 		end)
@@ -340,6 +425,8 @@ function CarryService.start()
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
+		ResourceService.step()
+		testBase[player] = nil
 		local connections = characterConnections[player]
 		if connections then for _,connection in connections do connection:Disconnect() end end
 		characterConnections[player] = nil

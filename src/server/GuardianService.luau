@@ -11,8 +11,12 @@ local Config = require(Shared.GuardianConfig)
 local State = require(Shared.GuardianState)
 local Geometry = require(Shared.GuardianGeometry)
 local Chase = require(Shared.GuardianChase)
+local Aim = require(Shared.GuardianAim)
+local Movement = require(Shared.MovementCalculator)
+local Data = require(script.Parent.DataService)
 local CarryDebuff = require(Shared.CarryDebuff)
 local Zone = require(script.Parent.ZoneGeometry)
+local Territory = require(script.Parent.BiomeTerritory)
 local ResourceService = require(script.Parent.ResourceService)
 local Carry = require(script.Parent.CarryService)
 local Catch = require(script.Parent.GuardianCatch)
@@ -44,6 +48,7 @@ end
 local function clear(r)
 	for _,name in {"Telegraph","Sweep","Direction"} do if r[name] then r[name]:Destroy() r[name]=nil end end
 	r.Hits={} r.Samples={}
+	r.CatchSamples={} r.CatchBody=nil r.LeapStart=nil
 end
 local function indicator(r,name,alpha,warning)
 	local part=r[name]
@@ -78,6 +83,9 @@ local function emit(r,state,at)
 		r.Frame = r.PendingFrame or Chase.attackFrame(r.Runway, r.Part.Position, aim)
 		r.PendingFrame=nil
 		clear(r) r.LastSample=at capture(r,at)
+		r.Attempts=(r.Attempts or 0)+1
+		r.WarningAt=at
+		if r.Config.Kind=="Shockwave" then r.LeapStart=r.Part.Position end
 		indicator(r,"Telegraph",1,true)
 		indicator(r,"Sweep",0,false)
 		r.Sweep.Color=Color3.fromRGB(255,230,120)
@@ -97,9 +105,13 @@ local function emit(r,state,at)
 		end
 		r.Part:SetAttribute("HazardFrame",r.Frame)
 	elseif state=="HAZARD" then
+		if r.LeapStart then place(r,Vector3.new(r.Frame.X,r.Home.Y,r.Frame.Z),r.Frame.Position-r.LeapStart) end
 		indicator(r,"Sweep",0,false) r.Sweep.Color=Color3.fromRGB(255,60,35)
 	elseif state=="COOLDOWN" then
 		clear(r)
+		-- A committed miss earns a short visible recovery before turning/pursuing.
+		-- Body catch geometry remains active and unchanged; no player invulnerability.
+		r.RecoverAt=at+r.Config.AttackRecovery r.Speed=0
 		if r.AttackTarget then attackFree[r.AttackTarget]=at+Chase.Timing.AttackStagger end
 		r.AttackTarget=nil
 	elseif state=="RETURNING" then
@@ -115,7 +127,7 @@ local function emit(r,state,at)
 		if Chase.horizontal(r.Part.Position, r.Home)>2 then
 			warn(("[GuardianService] %s return failsafe teleport from %s"):format(r.AreaId, tostring(r.Part.Position)))
 		end
-		place(r, r.Home, nil) r.Target=nil r.Threats={} r.EncounterStart=nil
+		place(r, r.Home, r.HomeFacing) r.Target=nil r.Threats={} r.EncounterStart=nil
 	end
 	publish(r)
 end
@@ -135,7 +147,12 @@ local function sample(r,startTime,endTime,currentTime)
 			if Geometry.hit(r.Config,r.Frame,at(from),at(endTime),(from-startTime)/r.Config.Active,(endTime-startTime)/r.Config.Active) then
 				r.Hits[p]=true
 				p:SetAttribute("HazardTick",currentTime)
-				if Carry.forceDrop(p,c,"Guardian:"..r.AreaId) then
+				local dropped=Carry.forceDrop(p,c,"Guardian:"..r.AreaId,true)
+				-- forceDrop reconciles the field clock. Reset may have cleared this attack,
+				-- evacuated everyone and destroyed its indicators during that call.
+				if r.Engine.State~="HAZARD" then return end
+				if dropped then
+					r.HazardHits=(r.HazardHits or 0)+1
 					Catch.apply(p,c,r.Frame.Position,r.Frame.LookVector,r.AreaId)
 				end
 				r.Threats[p]=nil
@@ -171,6 +188,9 @@ local function candidates(r, time)
 			notice(player, "SAFE ZONE REACHED\nTHE GUARDIAN TURNS BACK")
 		else
 			local position=root.Position
+			local velocity=root.AssemblyLinearVelocity
+			if threat.LastPosition and time>threat.LastTime then velocity=(position-threat.LastPosition)/(time-threat.LastTime) end
+			threat.Velocity=velocity threat.LastPosition=position threat.LastTime=time
 			table.insert(list,{
 				Player=player, Rarity=threat.Rarity, StolenAt=threat.StolenAt, Position=position,
 				Distance=Chase.horizontal(position, r.Part.Position),
@@ -205,7 +225,8 @@ local function carrierSpeed(player)
 	local strong=false
 	for _,effect in (curse and curse.Effects or {}) do if effect.Tier=="Strong" then strong=true end end
 	local humanoid=player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-	local speed=16*(1-worst)
+	local data=Data.get(player)
+	local speed=Movement.effective(data and data.Power or 0,data and data.SlowMode==true,true,worst,false)
 	if humanoid then speed=math.min(speed, humanoid.WalkSpeed) end
 	return speed, if strong then Chase.Timing.CursedDodgeSafety else Chase.Timing.DodgeSafety
 end
@@ -224,14 +245,29 @@ end
 -- recovering. One forceDrop per catch; the threat ends so the guardian retargets at once.
 local function catchCarriers(r, time)
 	local body, size = r.Part.CFrame, r.Part.Size
+	local previousBody=r.CatchBody or body
+	r.CatchSamples=r.CatchSamples or {}
 	for player, threat in r.Threats do
 		local root=rootOf(player)
 		local item=Carry.get(player)
 		if not root or not item or item.token~=threat.Token or Chase.isSafe(r.Runway, root.Position) or Catch.isRecovering(player) then continue end
-		if math.abs(root.Position.Y-body.Position.Y)>size.Y/2+Config.Catch.VerticalReach then continue end
-		if Chase.catchGap(body, size, root.Position)>r.Config.CatchReach then continue end
+		local previous=r.CatchSamples[player]
+		local old=if previous and previous.Character==player.Character and previous.Token==item.token then previous.Position else root.Position
+		r.CatchSamples[player]={Position=root.Position,Character=player.Character,Token=item.token}
+		local hit=false
+		-- Four short arcs avoid tunnelling when the body turns between samples.
+		for i=1,4 do
+			local a,b=(i-1)/4,i/4
+			if Geometry.catchSegment(previousBody:Lerp(body,a):PointToObjectSpace(old:Lerp(root.Position,a)),
+				previousBody:Lerp(body,b):PointToObjectSpace(old:Lerp(root.Position,b)),size,r.Config.CatchReach,Config.Catch.VerticalReach) then hit=true break end
+		end
+		if not hit then continue end
 		local character=player.Character
-		if Carry.forceDrop(player, character, "GuardianCatch:"..r.AreaId) then
+		local dropped=Carry.forceDrop(player, character, "GuardianCatch:"..r.AreaId, true)
+		-- Drop reconciliation may have closed the field and reset this encounter.
+		-- Do not apply a post-evacuation catch or resurrect its swept-body sample.
+		if r.Engine.State~="PURSUING" and r.Engine.State~="COOLDOWN" then return end
+		if dropped then
 			Catch.apply(player, character, body.Position, body.LookVector, r.AreaId)
 			notice(player, ("CAUGHT BY THE %s!\nYOUR RESOURCE WAS KNOCKED LOOSE"):format(string.upper(r.Part:GetAttribute("GuardianName") or "GUARDIAN")))
 			r.Part:SetAttribute("CatchTick", time)
@@ -239,6 +275,7 @@ local function catchCarriers(r, time)
 		r.Threats[player]=nil
 		if r.Target and r.Target.Player==player then r.Target=nil end
 	end
+	r.CatchBody=body
 end
 function Service.onPickup(player,id,version)
 	local item=Carry.get(player)
@@ -263,8 +300,9 @@ function Service.resetAll()
 	for _,r in guardians do
 		clear(r)
 		r.Engine:reset()
+		r.Speed=0
 		r.Threats={} r.Target=nil r.Initial=nil r.EncounterStart=nil r.AttackTarget=nil r.PendingFrame=nil
-		place(r, r.Home, nil)
+		place(r, r.Home, r.HomeFacing)
 		publish(r)
 	end
 	table.clear(attackFree)
@@ -278,8 +316,10 @@ function Service.getSnapshot(areaId)
 		Deadline=r.Engine.Deadline, Frame=r.Frame, Kind=r.Config.Kind, Rarity=r.Engine.Rarity,
 		TargetUserId=target and target.Player and target.Player.UserId or nil,
 		Position=r.Part.Position, Home=r.Home, SafeEntrance=r.Runway.origin+r.Runway.axis*r.Runway.entrance,
+		Attempts=r.Attempts or 0,HazardHits=r.HazardHits or 0,WarningAt=r.WarningAt, PursuitSpeed=r.Speed or 0,
 	}
 end
+function Service.getRunway() return runway and table.clone(runway) end
 local function boxes()
 	local list={}
 	local folder=workspace:FindFirstChild("Bases")
@@ -340,10 +380,28 @@ local function retreat(r, reason)
 end
 local function pursue(r, target, goalPos, distance, dt)
 	local speed=Chase.speed(r.Engine.Rarity or "Common", r.Config, worstSlowdown(target.Player), distance)
+	r.Speed=math.min(speed,(r.Speed or 0)+r.Config.Acceleration*math.clamp(dt,0,.1))
+	speed=r.Speed
 	local nextPos=Chase.stepToward(r.Part.Position, goalPos, speed, dt, r.Runway)
 	nextPos=Chase.separate(nextPos, others(r), Chase.Timing.Spacing, r.Runway, r.Bias)
 	place(r, nextPos, goalPos-nextPos)
 	return nextPos
+end
+local function attackFrame(r,target,goal)
+	local speed,safety=carrierSpeed(target.Player)
+	local threat=r.Threats[target.Player]
+	local frame=Aim.frame(r.Runway,r.Config,r.Part.Position,goal,threat and threat.Velocity or Vector3.zero,speed,safety)
+	if not frame then return nil end
+	-- Reject obstructed attack corridors/landing paths; do not attack through a wall.
+	local params=RaycastParams.new() params.FilterType=Enum.RaycastFilterType.Exclude
+	local excluded={workspace.GeneratedGameplay}
+	for _,p in Players:GetPlayers() do if p.Character then table.insert(excluded,p.Character) end end
+	params.FilterDescendantsInstances=excluded params.RespectCanCollide=true
+	local destination=if r.Config.Kind=="Shockwave" then frame.Position else frame:PointToWorldSpace(Vector3.new(r.Config.Length/2,0,0))
+	destination=Vector3.new(destination.X,r.Part.Position.Y,destination.Z)
+	local delta=destination-r.Part.Position
+	if delta.Magnitude>0.01 and workspace:Blockcast(r.Part.CFrame,Vector3.new(8,8,8),delta,params) then return nil end
+	return frame
 end
 function Service.start()
 	if connection then return end
@@ -366,12 +424,15 @@ function Service.start()
 		local span=byArea[area.Id]
 		local model=Instance.new("Model") model.Name=area.Guardian model.Parent=folder
 		local part=Instance.new("Part") part.Name="Guardian" part.Size=Vector3.new(10,12,18) part.Anchored=true part.CanCollide=false part.CanTouch=false
-		part.Position=Zone.guardianPoint(span.floor) part.Parent=model model.PrimaryPart=part
+		local homeFloor, facing=Territory.home(area.Id)
+		local home=homeFloor+Vector3.new(0,8,0)
+		assert(Chase.horizontal(Chase.clamp(runway, home), home)<0.5 and not Chase.isSafe(runway, home), "Guardian home outside the runway: "..area.Id)
+		part.CFrame=CFrame.lookAt(home, home+facing) part.Parent=model model.PrimaryPart=part
 		part:SetAttribute("AreaId",area.Id) part:SetAttribute("GuardianName",area.GuardianDisplayName) part:SetAttribute("HazardKind",Config.Areas[area.Id].Kind)
 		Metadata:Create(part,{DisplayName=area.GuardianDisplayName,Rarity="Common",ValueText="SLEEPING",ObjectType="Guardian"})
 		local r={
 			AreaId=area.Id, Part=part, Floor=span.floor, Config=Config.Areas[area.Id], Engine=State.new(Config.Areas[area.Id]),
-			Hits={}, Samples={}, LastSample=0, Home=part.Position, Runway=runway, Bases=bases, Threats={},
+			Hits={}, Samples={}, LastSample=0, Home=part.Position, HomeFacing=facing, Runway=runway, Bases=bases, Threats={},
 			Bias=if index%2==0 then 1 else -1,
 		}
 		r.Frame=Chase.attackFrame(runway, part.Position, part.Position+runway.axis)
@@ -383,7 +444,7 @@ function Service.start()
 			for _,r in guardians do
 				if r.Engine.State~="SLEEPING" then
 					clear(r) r.Engine:reset() r.Threats={} r.Target=nil r.EncounterStart=nil r.AttackTarget=nil r.PendingFrame=nil
-					place(r, r.Home, nil) publish(r)
+					place(r, r.Home, r.HomeFacing) publish(r)
 				end
 			end
 			return
@@ -392,7 +453,8 @@ function Service.start()
 			local engine=r.Engine
 			if engine.State=="SLEEPING" then continue end
 			-- Telegraphed attacks resolve only through their fair lane; body catches apply while chasing.
-			if engine.State=="PURSUING" or engine.State=="COOLDOWN" then catchCarriers(r, t) end
+			if engine.State=="PURSUING" or engine.State=="COOLDOWN" then catchCarriers(r, t)
+			else r.CatchBody=nil r.CatchSamples={} end
 			local context={attack=false, pursue=false, retreat=false, home=false}
 			if t>=(r.NextEval or 0) then
 				r.NextEval=t+Chase.Timing.TargetUpdate
@@ -422,9 +484,8 @@ function Service.start()
 					target.Position=goalPos
 					local distance=Chase.horizontal(r.Part.Position, goalPos)
 					local frame=nil
-					if t>=(engine.Deadline or 0) and distance<=Chase.Timing.AttackCommit and attackClear(r, target.Player, goalPos, t) then
-						local speed,safety=carrierSpeed(target.Player)
-						frame=Chase.fairFrame(r.Runway, r.Config, r.Part.Position, goalPos, speed, safety)
+					if t>=(engine.Deadline or 0) and distance<=r.Config.AttackRange and attackClear(r, target.Player, goalPos, t) then
+						frame=attackFrame(r,target,goalPos)
 					end
 					if frame then
 						r.PendingFrame=frame r.AttackTarget=target.Player
@@ -438,6 +499,13 @@ function Service.start()
 						end
 					end
 				end
+			elseif engine.State=="WARNING" and r.LeapStart then
+				-- A visible, committed leap during the latter warning; never a teleport to a
+				-- newly sampled target. Landing and shockwave share the original telegraph.
+				local alpha=math.clamp((t-r.WarningAt-.25)/(r.Config.Warning-.25),0,1)
+				local landing=Vector3.new(r.Frame.X,r.Home.Y,r.Frame.Z)
+				local point=r.LeapStart:Lerp(landing,alpha)+Vector3.yAxis*(4*r.Config.LeapHeight*alpha*(1-alpha))
+				place(r,point,landing-r.LeapStart)
 			elseif engine.State=="RETURNING" then
 				if t>=(r.DisengageUntil or 0) then
 					local nextPos=Chase.stepToward(r.Part.Position, r.Home, Chase.Timing.ReturnSpeed, dt, r.Runway)
@@ -460,15 +528,27 @@ function Service.start()
 			elseif engine.State=="COOLDOWN" then
 				context.pursue=alive and not capped
 				context.retreat=not context.pursue
-				-- Recovery is not a pause: the guardian keeps closing so pressure never lapses.
-				if context.pursue then
+				-- Brief attack recovery prevents an immediate rotating-body catch from
+				-- negating a successful lane dodge. Pursuit resumes for the rest of cooldown.
+				if context.pursue and t>=(r.RecoverAt or 0) then
 					local goal=rootOf(target.Player)
 					local goalPos=if goal then goal.Position else target.Position
 					target.Position=goalPos
 					pursue(r, target, goalPos, Chase.horizontal(r.Part.Position, goalPos), dt)
 				end
 			end
-			engine:step(t, function(s,at) emit(r,s,at) end, function(a,b) sample(r,a,b,t) end, context)
+			-- If the committed target is gone, cancel rather than release a stale attack.
+			if (engine.State=="WARNING" or engine.State=="HAZARD") and (not alive or not r.AttackTarget or not r.Threats[r.AttackTarget]) then
+				local replacement=r.Target
+				place(r,Vector3.new(r.Part.Position.X,r.Home.Y,r.Part.Position.Z),nil)
+				engine:transition("RETURNING",t,function(s,at) emit(r,s,at) end)
+				if replacement and r.Threats[replacement.Player] then
+					r.Target=replacement engine:transition("PURSUING",t,function(s,at) emit(r,s,at) end)
+				end
+			else
+				engine:step(t, function(s,at) emit(r,s,at) end, function(a,b) sample(r,a,b,t) end, context)
+			end
+			if engine.State=="PURSUING" or engine.State=="COOLDOWN" then catchCarriers(r,t) end
 			if engine.State=="WARNING" or engine.State=="HAZARD" then capture(r,t) end
 		end
 	end)

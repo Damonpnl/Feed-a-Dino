@@ -84,18 +84,18 @@ return function(t)
 	end)
 	t.test("engaged pursuit tracks the slowed baseline carry speed, not live WalkSpeed", function()
 		local c = Config.Areas.Grasslands
-		t.expect.near(Chase.speed("Common", c, 0, c.EngageDistance), 16 * c.SpeedRatio, 1e-6)
-		t.expect.near(Chase.speed("Common", c, 0.1, c.EngageDistance), 16 * 0.9 * c.SpeedRatio, 1e-6)
+		t.expect.near(Chase.speed("Common", c, 0, c.EngageDistance), c.BaselineWalk * c.SpeedRatio, 1e-6)
+		t.expect.near(Chase.speed("Common", c, 0.1, c.EngageDistance), c.BaselineWalk * 0.9 * c.SpeedRatio, 1e-6)
 		for _, slowdown in { 0, 0.02, 0.08, 0.2, 0.35 } do
 			local guardian = Chase.speed("Common", c, slowdown, 0)
-			t.expect.near(guardian / (16 * (1 - slowdown)), c.SpeedRatio, 1e-6)
+			t.expect.near(guardian / (c.BaselineWalk * (1 - slowdown)), c.SpeedRatio, 1e-6)
 		end
 		-- A future 20-stud/s carrier would outrun the fixed Common engaged speed.
-		t.expect.truthy(Chase.speed("Common", c, 0, 0) < 20)
+		t.expect.truthy(Chase.speed("Common", c, 0, 0) < 52)
 	end)
 	t.test("catch-up blends from engaged speed to catch-up speed over one engage distance", function()
 		local c = Config.Areas.Grasslands
-		local engaged, far = 16 * c.SpeedRatio, 16 * c.CatchUpRatio
+		local engaged, far = c.BaselineWalk * c.SpeedRatio, c.BaselineWalk * c.CatchUpRatio
 		t.expect.near(Chase.speed("Common", c, 0, c.EngageDistance * 2), far, 1e-6)
 		t.expect.near(Chase.speed("Common", c, 0, 1000), far, 1e-6)
 		t.expect.near(Chase.speed("Common", c, 0, c.EngageDistance * 1.5), (engaged + far) / 2, 1e-6)

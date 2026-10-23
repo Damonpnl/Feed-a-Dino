@@ -10,6 +10,34 @@ local function clip(a,b,low,high,t0,t1)
 	t0,t1=math.max(t0,enter),math.min(t1,leave)
 	return t0,t1,t0<=t1
 end
+-- Segment vs rounded oriented box: exact translation sweep, no larger catch radius.
+-- Relative endpoints also follow rotation; the server samples short rotational arcs.
+function Geometry.catchSegment(a,b,size,reach,vertical)
+	local lo,hi,ok=clip(a.Y,b.Y,-size.Y/2-vertical,size.Y/2+vertical,0,1)
+	if not ok then return false end
+	local dx,dz=b.X-a.X,b.Z-a.Z local hx,hz=size.X/2,size.Z/2
+	local cuts={lo,hi}
+	for _,v in {{a.X,dx,hx},{a.Z,dz,hz}} do
+		if math.abs(v[2])>1e-8 then for _,edge in {-v[3],v[3]} do
+			local t=(edge-v[1])/v[2] if t>lo and t<hi then table.insert(cuts,t) end
+		end end
+	end
+	table.sort(cuts)
+	local function distance(t)
+		local x=math.max(0,math.abs(a.X+dx*t)-hx) local z=math.max(0,math.abs(a.Z+dz*t)-hz)
+		return x*x+z*z
+	end
+	for i=1,#cuts-1 do
+		local l,h=cuts[i],cuts[i+1] local m=(l+h)/2
+		local x,z=a.X+dx*m,a.Z+dz*m
+		local ax,bx=if math.abs(x)>hx then a.X-math.sign(x)*hx else 0,if math.abs(x)>hx then dx else 0
+		local az,bz=if math.abs(z)>hz then a.Z-math.sign(z)*hz else 0,if math.abs(z)>hz then dz else 0
+		local denom=bx*bx+bz*bz
+		local t=if denom>0 then math.clamp(-(ax*bx+az*bz)/denom,l,h) else l
+		if math.min(distance(l),distance(h),distance(t))<=reach*reach then return true end
+	end
+	return distance(lo)<=reach*reach
+end
 function Geometry.hit(config, frame, previous, current, alpha0, alpha1)
 	local a,b=frame:PointToObjectSpace(previous),frame:PointToObjectSpace(current)
 	local t0,t1,ok=clip(a.Y,b.Y,0,config.Height,0,1)

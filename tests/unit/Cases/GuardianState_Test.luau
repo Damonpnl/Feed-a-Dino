@@ -68,6 +68,24 @@ return function(t)
 		t.expect.equal(s.State, "SLEEPING")
 		t.expect.equal(s.Disturbance, 0)
 	end)
+	-- A contact may synchronously reconcile the field cutoff; never finish its stale cycle.
+	t.test("reset during contact cancels remaining hazard transitions", function()
+		local s = State.new(Config.Areas.Grasslands)
+		s:pickup("Secret", 0)
+		local samples, afterReset = 0, {}
+		local reset = false
+		s:step(1000, function(state)
+			if reset then table.insert(afterReset, state) end
+		end, function()
+			samples += 1
+			s:reset()
+			reset = true
+		end)
+		t.expect.equal(samples, 1)
+		t.expect.equal(s.State, "SLEEPING")
+		t.expect.equal(s.Deadline, nil)
+		t.expect.equal(#afterReset, 0)
+	end)
 	t.test("returning is not a fixed short timer; travel home ends it", function()
 		local s = State.new(Config.Areas.Volcano)
 		s:pickup("Divine", 0)

@@ -9,21 +9,28 @@ local Config = {
 	-- queue another attack. Cooldown and field reset clear disturbance to baseline.
 	-- Pursuit (PROVISIONAL, measured in Studio; see docs/GAMEPLAY_TUNING_REPORT.md):
 	-- Wake: seconds before moving. SpeedRatio: engaged speed as a multiple of the fixed
-	-- baseline carry speed 16*(1-worst slowdown), never the player's live WalkSpeed, so
+	-- biome BaselineWalk*(1-worst slowdown), never the player's live WalkSpeed, so
 	-- future Speed upgrades make escape easier. CatchUpRatio applies from 2*EngageDistance
 	-- and blends to SpeedRatio at EngageDistance (studs, centre to player root).
 	-- CatchReach: studs from the guardian body box surface to the player root.
 	Areas = {
-		Grasslands = {Kind="Charge", Warning=1, Active=1.2, Cooldown=8, Length=90, Width=16, Height=12, Front=10,
-			Wake=0.8, SpeedRatio=1.10, CatchUpRatio=1.75, EngageDistance=30, CatchReach=5},
-		Swamp = {Kind="Lunge", Warning=0.9, Active=0.8, Cooldown=8, Length=48, Width=26, Height=10, Front=12,
-			Wake=0.8, SpeedRatio=1.10, CatchUpRatio=1.75, EngageDistance=30, CatchReach=5},
-		Jungle = {Kind="Shockwave", Warning=1.25, Active=1.4, Cooldown=8, Length=80, Width=80, Height=10, Radius=40, Front=1,
-			Wake=0.8, SpeedRatio=1.10, CatchUpRatio=1.75, EngageDistance=30, CatchReach=5},
-		CrystalCave = {Kind="Charge", Warning=0.75, Active=0.9, Cooldown=8, Length=110, Width=18, Height=12, Front=12,
-			Wake=0.8, SpeedRatio=1.10, CatchUpRatio=1.75, EngageDistance=30, CatchReach=5},
-		Volcano = {Kind="FireSweep", Warning=1.25, Active=1.8, Cooldown=10, Length=80, Width=40, Height=14, Front=8,
-			Wake=0.8, SpeedRatio=1.10, CatchUpRatio=1.75, EngageDistance=30, CatchReach=5},
+		-- PROVISIONAL: fixed biome baselines correspond to entry carry bases (22/24/27/30/35).
+		-- They never read the target's Power. Existing rarity and burden factors still apply.
+		Grasslands = {Kind="Charge", Warning=1, Active=1.0, Cooldown=7, Length=90, Width=16, Height=12, Front=10,
+			Wake=0.65, BaselineWalk=22, SpeedRatio=1.08, CatchUpRatio=1.65, EngageDistance=30, CatchReach=5,
+			Lead=0.8, MaxLead=30, AttackRange=42, Acceleration=100, AttackRecovery=.65},
+		Swamp = {Kind="Lunge", Warning=1, Active=0.65, Cooldown=6, Length=76, Width=22, Height=10, Front=12,
+			Wake=0.6, BaselineWalk=24, SpeedRatio=1.12, CatchUpRatio=1.8, EngageDistance=32, CatchReach=5,
+			Lead=0.75, MaxLead=32, AttackRange=40, Acceleration=120, AttackRecovery=.75},
+		Jungle = {Kind="Shockwave", Warning=1.25, Active=1.1, Cooldown=7, Length=80, Width=80, Height=10, Radius=40, Front=1,
+			Wake=0.6, BaselineWalk=27, SpeedRatio=1.12, CatchUpRatio=1.8, EngageDistance=34, CatchReach=5,
+			Lead=0.85, MaxLead=34, AttackRange=44, Acceleration=125, LeapRange=74, LeapHeight=18, AttackRecovery=.85},
+		CrystalCave = {Kind="Charge", Warning=1.15, Active=1.0, Cooldown=8, Length=110, Width=16, Height=12, Front=12,
+			Wake=0.65, BaselineWalk=30, SpeedRatio=1.07, CatchUpRatio=1.7, EngageDistance=34, CatchReach=5,
+			Lead=0.85, MaxLead=38, AttackRange=46, Acceleration=120, AttackRecovery=.9},
+		Volcano = {Kind="FireSweep", Warning=1.25, Active=1.4, Cooldown=7, Length=96, Width=40, Height=14, Front=8,
+			Wake=0.6, BaselineWalk=35, SpeedRatio=1.14, CatchUpRatio=1.85, EngageDistance=38, CatchReach=5,
+			Lead=0.9, MaxLead=44, AttackRange=54, Acceleration=140, AttackRecovery=.8},
 	},
 	-- Catch consequence. Ragdoll ends before Recovery; pickup and further catches/hazard
 	-- consequences stay blocked until Recovery. Launch speeds are studs/second.
@@ -43,6 +50,10 @@ function Config.validate()
 			local n=c[key]
 			if type(n)~="number" or n~=n or n<=0 or n>=math.huge then table.insert(errors,"Invalid guardian "..area.Id.."."..key) end
 		end
+		for _,key in {"BaselineWalk","Lead","MaxLead","AttackRange","Acceleration","AttackRecovery"} do
+			local n=c[key]
+			if type(n)~="number" or n~=n or n<=0 or n>=math.huge then table.insert(errors,"Invalid guardian "..area.Id.."."..key) end
+		end
 		if type(c.Wake)=="number" and (c.Wake<0.5 or c.Wake>1) then table.insert(errors,"Wake left the 0.5-1.0 second band: "..area.Id) end
 		if type(c.SpeedRatio)=="number" and (c.SpeedRatio<1 or c.SpeedRatio>1.25) then table.insert(errors,"Engaged pursuit ratio outside 1.0-1.25: "..area.Id) end
 		if type(c.CatchUpRatio)=="number" and type(c.SpeedRatio)=="number" and (c.CatchUpRatio<c.SpeedRatio or c.CatchUpRatio>2) then
@@ -50,7 +61,7 @@ function Config.validate()
 		end
 		if type(c.CatchReach)=="number" and (c.CatchReach<3 or c.CatchReach>8) then table.insert(errors,"Catch reach outside 3-8 studs: "..area.Id) end
 		local chase=require(script.Parent.GuardianChase)
-		if type(c.CatchUpRatio)=="number" and chase.Timing.BaselineWalk*c.CatchUpRatio*chase.Profiles.Divine.Speed>=chase.Timing.ReturnSpeed then
+		if type(c.CatchUpRatio)=="number" and c.BaselineWalk*c.CatchUpRatio*chase.Profiles.Divine.Speed>=chase.Timing.ReturnSpeed then
 			table.insert(errors,"Return travel must be faster than the fastest pursuit: "..area.Id)
 		end
 		if c.Kind~="Charge" and c.Kind~="Lunge" and c.Kind~="Shockwave" and c.Kind~="FireSweep" then table.insert(errors,"Invalid hazard: "..area.Id) end

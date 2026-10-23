@@ -92,7 +92,7 @@ Chase.Timing = {
 	RecoveryFloor = 2.5,
 	-- Return failsafe: RETURNING ends in SLEEPING at this deadline even if travel stalls.
 	ReturnDuration = 90,
-	ReturnSpeed = 32,
+	ReturnSpeed = 76,
 	DisengageHold = 0.6,
 	EntranceStandoff = 10,
 	HazardPad = 4,
@@ -134,7 +134,7 @@ function Chase.stronger(current: string?, incoming: string): string?
 	return current
 end
 
-export type PursuitConfig = { SpeedRatio: number?, CatchUpRatio: number?, EngageDistance: number?, Wake: number? }
+export type PursuitConfig = { BaselineWalk: number?, SpeedRatio: number?, CatchUpRatio: number?, EngageDistance: number?, Wake: number? }
 
 -- Pursuit speed for the strongest threatened rarity against a carrier with the given
 -- worst-case slowdown. Beyond 2*EngageDistance the guardian closes at CatchUpRatio and
@@ -147,7 +147,7 @@ function Chase.speed(rarity: string, config: PursuitConfig?, slowdown: number?, 
 	if config and config.CatchUpRatio and engage and distance then
 		ratio = engaged + (config.CatchUpRatio - engaged) * math.clamp((distance - engage) / engage, 0, 1)
 	end
-	local carry = Chase.Timing.BaselineWalk * (1 - math.clamp(slowdown or 0, 0, 0.95))
+	local carry = ((config and config.BaselineWalk) or Chase.Timing.BaselineWalk) * (1 - math.clamp(slowdown or 0, 0, 0.95))
 	return carry * ratio * (if profile then profile.Speed else 1)
 end
 
