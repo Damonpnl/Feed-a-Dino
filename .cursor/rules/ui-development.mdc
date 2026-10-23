@@ -1,0 +1,13 @@
+---
+description: Use for HUD, screens, evolution or feeding UI, and client presentation work
+alwaysApply: false
+---
+
+# UI development
+
+- Read `Feed-a-Pet-Vault/03 - Visual Design/UI Screens and Contracts.md` (which screens exist and what data each reads) and `UI Design System.md`.
+- The HUD is built in code in `src/client/UIController.client.luau` from server attributes and existing remotes. A screen renders server state; it never computes rewards, ownership, or evolution results.
+- Evolution and feed choices: server handling is `FeedInteraction` in `src/server/FeedService.luau`; branch rules are in `src/shared/MonsterDefinitions.luau` and `src/shared/EvolutionCalculator.luau`. Stage 5 and Awakening stay locked.
+- There is no shop, Index, or monetization UI in this game today.
+- Steal an Egg HUD, shop, and Index stills are reference observations. Open one image from `Feed-a-Pet-Vault/03 - Visual Design/Visual Reference Gallery.md` for a visual task; do not copy that HUD.
+- Check desktop and mobile layouts. Do not claim a screenshot check you could not make; Studio capture is agent-view only.

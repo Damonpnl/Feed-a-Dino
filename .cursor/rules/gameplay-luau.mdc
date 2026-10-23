@@ -1,0 +1,15 @@
+---
+description: Gameplay Luau conventions for server, shared, and test code
+globs: src/server/**/*.luau,src/shared/**/*.luau,tests/**/*.luau
+alwaysApply: false
+---
+
+# Gameplay Luau
+
+- Entry notes: `Feed-a-Pet-Vault/02 - Engineering/Architecture and Module Map.md` and the one system note from `Feed-a-Pet-Vault/00 - Home/Task Router.md`.
+- Put new rules in pure `src/shared` calculators first and cover them in `tests/unit/Cases`. Services in `src/server` apply results to live state.
+- Validate every client request on the server (existing remotes only; adding a RemoteEvent needs approval).
+- Do not change `MovementConfig`, `GuardianConfig`, `EconomyConfig`, trainer prices, or resource weights outside a balance task.
+- Studio uses the `StudioMemory` backend. Never open the production DataStore in Studio.
+- Opt-in Play scripts under `tests/` stay opt-in.
+- Run the matching unit filter and quote the pass count you saw, or say it was not run. Details: `Feed-a-Pet-Vault/02 - Engineering/Security, Testing and Diagnostics.md`.

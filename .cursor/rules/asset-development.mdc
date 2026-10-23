@@ -1,0 +1,12 @@
+---
+description: Use for resource, trainer, guardian, or pet model hooks and 3D asset specifications
+alwaysApply: false
+---
+
+# Asset development
+
+- Read `Feed-a-Pet-Vault/03 - Visual Design/Creatures and Asset Specifications.md` and `Art Direction.md`. Art direction is partly proposal; label it as such.
+- Resource and trainer hooks: `src/shared/ResourceModelDefinitions.luau`, `ServerStorage.ResourceModels` (Studio-owned), `src/server/TrainerVisualService.luau`. A guardian is not one of those models: its id is in `src/shared/AreaDefinitions.luau` and the visual is bound in `src/client/GuardianPresentation.luau`. Pet `Visual.ModelKey` is still `Placeholder`.
+- Studio owns imported models. Do not write models into Workspace from a script unless asked. Keep existing string ids and model keys.
+- Blender is not installed and no Blender MCP exists. Do not promise a Blender step.
+- Open one Steal an Egg reference that matches the asset (`Feed-a-Pet-Vault/04 - Reference Research/Reference Manifest.md`). Never copy its meshes, names, or art.

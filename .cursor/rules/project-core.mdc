@@ -1,0 +1,50 @@
+---
+description: Core rules for Feed a Pet (Roblox, Luau, Rojo)
+alwaysApply: true
+---
+
+# Feed a Pet core rules
+
+Roblox game: Luau via Rojo, Roblox Studio for the world, Cursor and Claude Code for editing, Studio MCP for inspecting live instances. Short orientation: `CLAUDE.md`.
+
+## Read first (only when relevant)
+
+- Architecture decisions: `docs/FEED_A_PET_MASTER_CONTEXT.md`.
+- Resources, rarities, nodes, drops, field spawning: `docs/RESOURCE_SPECIFICATION.md` (authoritative tables).
+- Feeding, evolution, mutations, lineage: `docs/LINEAGE_SYSTEM.md` and `docs/CURRENT_STATE.md`.
+
+## Ownership
+
+- Rojo owns `src/shared`, `src/server`, `src/client`.
+- Studio owns Workspace, bases, labs, terrain, creature models, animations, lighting, packages, hand-placed instances. Never modify them unless asked.
+- Inspect instance paths with Studio MCP first. Never invent a path.
+
+## Code
+
+- Luau, `--!strict` where practical. Small focused modules. Stable string ids; display names separate. No deprecated APIs.
+- Preserve existing names and public interfaces. Do not rewrite unrelated files. No generic frameworks or unrequested systems.
+- Pure calculation modules use no Roblox services, mutate no player state, and are deterministic unless randomness is injected.
+
+## Authority
+
+The server owns creature ownership, feeding validation, inventory, affinity, evolution, rarity and mutation rolls, currency, upgrades, and persistence. Clients request actions and render results; never trust client values for rewards, ownership, rarity, evolution, currency, or stats.
+
+## Ask before
+
+Renaming instances, moving files, changing the Rojo mapping, adding RemoteEvents or DataStores, modifying Workspace, adding monetization, expanding scope. Explain material architecture changes before implementing. Do not commit, push, or switch branches unless asked.
+
+## Workflow
+
+Read relevant docs, inspect files, use Studio MCP for live instances, state files and assumptions, build the smallest complete slice, run tests or say they were not run, summarize risks. Full procedure: `Feed-a-Pet-Vault/06 - Agent Workflows/Agent Playbook.md`.
+
+## Context retrieval
+
+The vault is an index, not a document to read whole.
+
+1. Identify the subsystem and task type.
+2. Open `Feed-a-Pet-Vault/00 - Home/Task Router.md` only if needed; take one row.
+3. Read at most 2 to 4 notes first; more only for a named unresolved dependency.
+4. Inspect the current source. Source beats notes and historical reports.
+5. Prefer exact files over summaries. Open one reference image for a visual task, never a folder or all media. `references/` is Steal an Egg material, not a requirement.
+6. Skip the vault for self-contained tasks. Avoid repeated repo-wide searches when paths are known.
+7. After a verified behavior change, update only the relevant note. No planning documents for trivial changes.

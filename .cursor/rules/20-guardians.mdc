@@ -1,0 +1,15 @@
+---
+description: Guardian pursuit, catch, and hazard changes
+globs: src/server/Guardian*.luau,src/shared/Guardian*.luau,src/client/GuardianPresentation.luau
+alwaysApply: false
+---
+
+# Guardian task
+
+Read `src/shared/GuardianConfig.luau`, `GuardianState.luau`, `GuardianChase.luau`, and the service function you are changing. Invariants and the state machine are in `Feed-a-Pet-Vault/01 - Game Design/Guardians and Carrying.md`.
+
+- The `Disturbance` meter values in `GuardianConfig` are inert since Phase 3B (guardians wake immediately). Do not tune them (`Bugs and Test Status` D4).
+- Do not scale pursuit from the player's live WalkSpeed.
+- Do not treat `docs/FAST_HEIST_TUNING_REPORT.md` kinematic losses as an approved difficulty target. Ratios in notes are stale if they differ from `GuardianConfig`.
+- Keep the carry invariants: one carried resource, safe-zone crossing drops the threat but does not bank the item, reset forfeits items for carriers still in the field.
+- Open one Steal an Egg still only for a visual task (`Feed-a-Pet-Vault/03 - Visual Design/Visual Reference Gallery.md`, Guardians). Chase timing is unknown from the reference material.

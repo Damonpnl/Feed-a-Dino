@@ -1,0 +1,235 @@
+{
+  "main": {
+    "id": "000153ed6966cabd",
+    "type": "split",
+    "children": [
+      {
+        "id": "4e9377b48b97257f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "0f7c7dd952395a30",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "00 - Home/Task Router.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Task Router"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "ce5b071df3480a3a",
+    "type": "split",
+    "children": [
+      {
+        "id": "ce632c12450cdb70",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "882bab532d874a73",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "095ad450a269a169",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "53620063821dc3e8",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "2825754cd3c9c90d",
+    "type": "split",
+    "children": [
+      {
+        "id": "65930318c5f93daa",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "c242f39e03d1297c",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "00 - Home/Task Router.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for Task Router"
+            }
+          },
+          {
+            "id": "5ef1febab658ec8a",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "00 - Home/Task Router.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from Task Router"
+            }
+          },
+          {
+            "id": "481d4b52d0fb114a",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "c64572ca9116b83c",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "e26eae675b6d0366",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "00 - Home/Task Router.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of Task Router"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "0f7c7dd952395a30",
+  "lastOpenFiles": [
+    "03 - Visual Design/Visual Reference Gallery.md",
+    "03 - Visual Design/UI Screens and Contracts.md",
+    "07 - Templates/Bug Report.md",
+    "03 - Visual Design/Creatures and Asset Specifications.md",
+    "03 - Visual Design/UI Design System.md",
+    "03 - Visual Design/World Layout and Zones.md",
+    "05 - Development/Vault Health.md",
+    "03 - World, UI, and Assets/UI Design System.md",
+    "05 - Development/Session Handoff.md",
+    "06 - Agent Workflows/Agent Playbook.md",
+    "05 - Development/Current State and Roadmap.md",
+    "05 - Development/Bugs and Test Status.md",
+    "05 - Development/Decisions and Open Questions.md",
+    "04 - Reference Research/Reference Manifest.md",
+    "03 - Visual Design/Art Direction.md",
+    "02 - Engineering/Tooling and Build.md",
+    "02 - Engineering/Security, Testing and Diagnostics.md",
+    "02 - Engineering/Data, Networking and Persistence.md",
+    "02 - Engineering/Architecture and Module Map.md",
+    "01 - Game Design/Monetization and LiveOps.md",
+    "01 - Game Design/Progression and Economy.md",
+    "01 - Game Design/Rarity and Content Catalog.md",
+    "01 - Game Design/Pets, Feeding and Evolution.md",
+    "01 - Game Design/Guardians and Carrying.md",
+    "01 - Game Design/Resources and Field Resets.md",
+    "01 - Game Design/Game Vision and Core Loop.md",
+    "05 - Development",
+    "03 - Visual Design",
+    "04 - Reference Research/Reference Manifest.csv",
+    "Attachments/Resources/sae-treadmills-ranked.jpg",
+    "Attachments/Resources/sae-mutation-golden-icon.png",
+    "Attachments/Resources/sae-egg-luminous.png",
+    "Attachments/Resources/sae-egg-extinction.png",
+    "Attachments/Creatures/sae-pet-card-patapim.png",
+    "Attachments/Creatures/sae-pet-bear.png",
+    "Attachments/Creatures/sae-guardian-cosmic-sleeping.jpg",
+    "Attachments/Creatures/sae-guardian-forest-chicken-sleeping.png",
+    "Attachments/Creatures/sae-guardian-volcano-hound.png",
+    "Attachments/Creatures/sae-guardian-titan-gorilla.png",
+    "Attachments/Studio",
+    "Attachments/Diagrams",
+    "Attachments/Video-Keyframes",
+    "Attachments/Resources",
+    "Attachments/Creatures",
+    "Attachments/World",
+    "Attachments/UI"
+  ]
+}

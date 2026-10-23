@@ -1,0 +1,16 @@
+---
+description: Edit the Feed a Pet vault only after a verified behavior change
+globs: Feed-a-Pet-Vault/**/*.md
+alwaysApply: false
+---
+
+# Vault edits
+
+Follow the documentation rules in `Feed-a-Pet-Vault/06 - Agent Workflows/Agent Playbook.md`.
+
+- Change the one system note whose contract changed. Do not copy live numbers out of Luau; point at the symbol.
+- Use vault-relative wikilinks and keep the six-folder structure. Escape pipes in tables (`\|`).
+- Label evidence: VERIFIED IMPLEMENTATION, CONFIRMED DESIGN, REFERENCE OBSERVATION, PROPOSAL, UNKNOWN. Set `last_verified` only after checking source.
+- Record doc-versus-source disagreements in `05 - Development/Bugs and Test Status.md`; decisions in `05 - Development/Decisions and Open Questions.md`.
+- Do not refresh `05 - Development/Vault Health.md` for a local fix.
+- `references/` is not a requirement. Never copy secrets such as `mcp.json`. Do not commit unless asked.
