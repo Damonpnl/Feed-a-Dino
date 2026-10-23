@@ -148,7 +148,21 @@ local ok,failure=xpcall(function()
 	end
 
 	-- 1. Simultaneous thefts from different biomes, independent guardians, shared boundary.
-	local jungleId,swampId=availableList("Jungle")[1],availableList("Swamp")[1]
+	-- This tests disengagement, not difficulty: a random rear spawn can put the
+	-- straight-line runner through the guardian body before it reaches the runway.
+	-- Use the existing safe-side spawn farthest toward the entrance, without moving
+	-- resources, changing their rarity, or changing production spawn/guardian rules.
+	local function frontResource(area)
+		local ids=availableList(area)
+		table.sort(ids,function(x,y)
+			local a,b=Resource.getRecord(x).Position,Resource.getRecord(y).Position
+			return if a.X==b.X then x<y else a.X<b.X
+		end)
+		local id=ids[1]
+		check(id and Resource.getRecord(id).Position.X<snapshot(area).Home.X-12,area.." needs a safe-side spawn for the disengagement fixture")
+		return id
+	end
+	local jungleId,swampId=frontResource("Jungle"),frontResource("Swamp")
 	check(jungleId and swampId,"Jungle and Swamp each have an available resource")
 	local beforeJ,beforeS=snapshot("Jungle").Activation,snapshot("Swamp").Activation
 	local picked=parallel(function() return acquire(a,jungleId) end,function() return acquire(b,swampId) end)
@@ -256,11 +270,14 @@ local ok,failure=xpcall(function()
 	if Carry.get(b) then check(Carry.forceDrop(b,b.Character,"Test"),"B drops") end
 	check(waitFor(function() local s=snapshot(switchArea).State return s=="RETURNING" or s=="SLEEPING" end,8),"No remaining threat: guardian disengages")
 	-- Repeated pickups of the same item: profile kept, versions advance, stale acks rejected.
+	-- B may have been body-caught beside A; its recovery window legitimately blocks pickup.
+	local Catch=require(Server.GuardianCatch)
+	check(waitFor(function() return not Catch.isRecovering(b) end,Config.Catch.Recovery+0.5),"B leaves any catch recovery")
 	local itemCurse=nil
 	local versions={}
 	for i=1,5 do
 		local before=snapshot(switchArea)
-		check(acquire(b,second),"Repeated pickup "..i)
+		check(acquire(b,second),"Repeated pickup "..i.." ("..tostring(Resource.getRecord(second) and Resource.getRecord(second).State)..", recovering="..tostring(Catch.isRecovering(b))..")")
 		local after=snapshot(switchArea)
 		if before.State=="SLEEPING" then
 			check(after.Activation==before.Activation+1,"Pickup "..i.." wakes a sleeping guardian once")
@@ -294,7 +311,6 @@ local ok,failure=xpcall(function()
 	local curses={[a]=a:GetAttribute("CarryCurse"),[b]=b:GetAttribute("CarryCurse")}
 	local stress={Hits=0,Repicks=0,Rejected=0,CurseDrift=0,Catches={Swamp=0,Jungle=0}}
 	local attacksBefore={Swamp=monitor.Attacks.Swamp,Jungle=monitor.Attacks.Jungle}
-	local Catch=require(Server.GuardianCatch)
 	local stressEnd=os.clock()+45
 	while os.clock()<stressEnd and remaining()>8 do
 		for p,station in {[a]=stationA,[b]=stationB} do
@@ -337,6 +353,8 @@ local ok,failure=xpcall(function()
 	check(resetId and acquire(a,resetId),"Pickup moments before the reset")
 	local resetArea=Resource.getRecord(resetId).AreaId
 	check(snapshot(resetArea).State~="SLEEPING","Guardian wakes before the reset")
+	-- The territory guardian can reach a stationary thief within 4.5 s; the reset, not a catch, must end this carry.
+	roots[a].CFrame=CFrame.new(entranceX-14,floorY,-86)
 	local resetCurse=a:GetAttribute("CarryCurse")
 	check(waitFor(function() return Resource.getSnapshot().Phase=="Reset" end,8),"Field reset begins")
 	check(waitFor(function()

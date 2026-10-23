@@ -94,13 +94,6 @@ function ZoneGeometry.randomTopPoint(part: BasePart, rng: Random): Vector3
 	return part.Position + surface.normal * (surface.half + 1.3) + surface.u * u + surface.v * v
 end
 
-function ZoneGeometry.guardianPoint(part: BasePart): Vector3
-	local surface = ZoneGeometry.surface(part)
-	local sign = if surface.u:Dot(Vector3.xAxis) >= 0 then 1 else -1
-	local along = surface.u * (sign * surface.uHalf * 0.7)
-	return part.Position + surface.normal * (surface.half + 8) + along
-end
-
 function ZoneGeometry.getZone(area: AreaDefinitions.AreaDefinition): Instance?
 	local root = workspace:FindFirstChild("ExpeditionZones")
 	if root == nil then

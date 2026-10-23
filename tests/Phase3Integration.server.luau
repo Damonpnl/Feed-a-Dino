@@ -2,6 +2,7 @@
 assert(game:GetService("RunService"):IsStudio(),"Studio only")
 local Server=game.ServerScriptService.Server
 local Spawn,Carry,Data,Guardian,Resource=require(Server.SpawnService),require(Server.CarryService),require(Server.DataService),require(Server.GuardianService),require(Server.ResourceService)
+local Territory=require(Server.BiomeTerritory)
 local Shared=game.ReplicatedStorage.Shared
 local Resources,Areas,Config,Geometry,Format=require(Shared.ResourceDefinitions),require(Shared.AreaDefinitions),require(Shared.GuardianConfig),require(Shared.GuardianGeometry),require(Shared.NumberFormat)
 local player=game.Players:GetPlayers()[1]
@@ -27,19 +28,19 @@ local function acquire(id)
 end
 local function drop() return Carry.forceDrop(player,player.Character,"Test") end
 local originalPower,originalFrame,root,anchored
--- A stationary carrier is body-caught before any attack; stay outside catch reach but inside AttackCommit.
-local HOLD=22
+-- Isolate hazard geometry from swept body catches. The old radial 22-stud retreat
+-- could cross the turning guardian's body before reaching a telegraph under fast
+-- pursuit. Hold on the safe-facing runway side, inside this area's attack range.
+-- This is deliberate fixture positioning, not an escape/difficulty measurement.
 local function attackReached(area)
 	local state=Guardian.getSnapshot(area.Id).State
 	if state=="WARNING" or state=="HAZARD" then return true end
 	local model=workspace.GeneratedGameplay.Guardians:FindFirstChild(area.Guardian)
 	if model and root then
 		local g=model:GetPivot().Position
-		local flat=Vector3.new(root.Position.X-g.X,0,root.Position.Z-g.Z)
-		if flat.Magnitude<HOLD then
-			local dir=if flat.Magnitude>0.1 then flat.Unit else Vector3.xAxis
-			root.CFrame=CFrame.new(Vector3.new(g.X,root.Position.Y,g.Z)+dir*HOLD)
-		end
+		local region=Territory.get(area.Id).Region
+		local hold=if Config.Areas[area.Id].Kind=="Shockwave" then 25 else 35
+		root.CFrame=CFrame.new(Vector3.new(g.X,root.Position.Y,g.Z)-region.Axis*hold)
 	end
 	return false
 end
@@ -102,7 +103,9 @@ local ok,failure=xpcall(function()
 		check(waitFor(function() return not Carry.get(player) end,c.Warning+c.Active+2),area.Id.." hit forces drop")
 		check(Resource.getRecord(token).State=="DROPPED" and physical(token),"Hit preserves recoverable GUID")
 		check(player.Character.Humanoid.Health==health and health>0,"Hazard causes no damage")
-		check(player.Character.Humanoid.WalkSpeed==16 and player:GetAttribute("CarriedName")=="","Hazard clears speed/HUD")
+		local recovery=require(Server.GuardianCatch).getSnapshot(player)
+		local expected=require(Shared.MovementCalculator).effective(Data.get(player).Power,Data.get(player).SlowMode==true,false,0,recovery~=nil and not recovery.Standing)
+		check(player.Character.Humanoid.WalkSpeed==expected and player:GetAttribute("CarriedName")=="","Hazard clears carry penalty/HUD; ragdoll keeps movement priority")
 		check(not drop(),"Duplicate contact/drop produces no resource")
 		local Catch=require(Server.GuardianCatch)
 		check(Catch.isRecovering(player) and not acquire(token),"Hit carrier cannot re-pick during recovery")
