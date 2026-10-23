@@ -25,6 +25,8 @@ export type MonsterRecord = {
 export type SaveData = {
 	Cash: number,
 	Power: number,
+	TrainerTier: number,
+	SlowMode: boolean,
 	EquippedMonster: string,
 	Monsters: { [string]: MonsterRecord },
 	BaseUpgrades: {
@@ -71,6 +73,8 @@ function PlayerData.default(): SaveData
 	return {
 		Cash = 0,
 		Power = 0,
+		TrainerTier = 1,
+		SlowMode = false,
 		EquippedMonster = STARTER,
 		Monsters = {
 			[STARTER] = PlayerData.createMonster(STARTER, "Common"),
@@ -109,6 +113,10 @@ function PlayerData.normalize(raw: any): SaveData
 
 	data.Cash = math.max(0, finiteNumber(raw.Cash, 0))
 	data.Power = math.max(0, finiteNumber(raw.Power, 0))
+	-- Additive ownership: legacy TrainingLevel is not a tier and is retained below.
+	-- Malformed explicit tiers are preserved; economy operations fail closed.
+	data.TrainerTier = if raw.TrainerTier==nil then 1 else raw.TrainerTier
+	data.SlowMode = raw.SlowMode == true
 
 	if typeof(raw.EquippedMonster) == "string" and raw.EquippedMonster ~= "" then
 		data.EquippedMonster = raw.EquippedMonster

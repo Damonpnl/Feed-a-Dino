@@ -12,6 +12,7 @@ local Stages = require(ReplicatedStorage.Shared.GrowthStageDefinitions)
 local Multipliers = require(ReplicatedStorage.Shared.PetMultipliers)
 local Prestige = require(ReplicatedStorage.Shared.PrestigeCalculator)
 local Progression = require(ReplicatedStorage.Shared.PetProgressionConfig)
+local Economy = require(ReplicatedStorage.Shared.EconomyCalculator)
 local FeedRolls = require(script.Parent.FeedRolls)
 local choiceRolls = {}
 local rng = Random.new()
@@ -20,7 +21,7 @@ local HttpService = game:GetService("HttpService")
 
 local MonsterService = {}
 
-local INCOME_SECONDS = 2
+local started = false
 local visuals: { [Player]: Model } = {}
 
 local function generatedFolder(): Folder
@@ -155,7 +156,7 @@ function MonsterService.refreshVisual(player: Player)
 	model.Parent=generatedFolder()
 	if previous then previous:Destroy() end
 
-	local income = math.max(1, math.floor(MonsterService.getMultiplier(player))) / INCOME_SECONDS
+	local income = Economy.income(MonsterService.getMultipliers(player).IncomeMultiplier)
 	BillboardMetadata:Create(model, {
 		DisplayName = if definition ~= nil then definition.DisplayName else record.Species,
 		Rarity = record.Rarity,
@@ -217,6 +218,8 @@ function MonsterService.onBaseReady(player: Player)
 end
 
 function MonsterService.start()
+	if started then return end
+	started=true
 	Players.PlayerRemoving:Connect(function(player)
 		choiceRolls[player]=nil
 		local visual = visuals[player]
@@ -226,19 +229,7 @@ function MonsterService.start()
 		end
 	end)
 
-	task.spawn(function()
-		while true do
-			task.wait(INCOME_SECONDS)
-			for _, player in Players:GetPlayers() do
-				local data = DataService.get(player)
-				if data ~= nil then
-					local gain = math.max(1, math.floor(MonsterService.getMultiplier(player)))
-					data.Cash += gain
-					DataService.publish(player)
-				end
-			end
-		end
-	end)
+	-- The sole economy scheduler is TrainingService; no second passive-income loop.
 end
 
 return MonsterService

@@ -54,7 +54,7 @@ local carry = Instance.new("TextLabel")
 carry.Name = "CarryCard"
 carry.AnchorPoint = Vector2.new(0.5, 1)
 carry.Position = UDim2.new(0.5, 0, 1, -70)
-carry.Size = UDim2.new(0.65, 0, 0, 64)
+carry.Size = UDim2.new(0.55, 0, 0, 64)
 carry.BackgroundColor3 = Color3.fromRGB(25, 29, 38)
 carry.BackgroundTransparency = 0.15
 carry.TextColor3 = Color3.new(1, 1, 1)
@@ -279,3 +279,50 @@ feedRemote.OnClientEvent:Connect(function(payload)
 	if not payload.Success then title.Text=payload.Reason or "Evolution unavailable" end
 end)
 refreshChoices()
+
+-- Phase 5A: one presentation panel and one remote; replicated rates are server-owned.
+local Trainers=require(Shared.TrainerDefinitions)
+local trainingRemote=game.ReplicatedStorage.Remotes:WaitForChild("TrainingInteraction") :: RemoteEvent
+local economyPanel=Instance.new("Frame")
+economyPanel.Name="EconomyPanel"
+economyPanel.AnchorPoint=Vector2.new(0,0)
+economyPanel.Position=UDim2.fromOffset(16,280)
+economyPanel.Size=UDim2.new(0.3,0,0,272)
+economyPanel.BackgroundColor3=Color3.fromRGB(25,29,38)
+economyPanel.Parent=gui
+local economyLimit=Instance.new("UISizeConstraint")
+economyLimit.MaxSize=Vector2.new(280,272) economyLimit.Parent=economyPanel
+local economyText=Instance.new("TextLabel")
+economyText.Name="Details" economyText.Position=UDim2.fromOffset(10,8)
+economyText.Size=UDim2.new(1,-20,1,-106) economyText.BackgroundTransparency=1
+economyText.TextColor3=Color3.new(1,1,1) economyText.Font=Enum.Font.GothamMedium
+economyText.TextSize=16 economyText.TextWrapped=true economyText.Parent=economyPanel
+local function economyButton(name,y)
+	local b=Instance.new("TextButton") b.Name=name b.Position=UDim2.new(0,8,1,y)
+	b.Size=UDim2.new(1,-16,0,40) b.TextSize=16 b.TextWrapped=true b.Font=Enum.Font.GothamBold
+	b.Parent=economyPanel return b
+end
+local trainButton=economyButton("Train",-94)
+local upgradeButton=economyButton("Upgrade",-48)
+local displayedTarget: number?=nil
+local function refreshEconomy()
+	local tier=numberAttribute("TrainerTier")
+	local current=Trainers.getOrdered()[tier]
+	local nextTier=Trainers.getOrdered()[tier+1]
+	displayedTarget=if current and nextTier then tier+1 else nil
+	local active=player:GetAttribute("TrainingActive")==true
+	economyText.Text="Cash "..Format.compact(numberAttribute("Cash")).." · +"..Format.compact(numberAttribute("IncomePerSecond")).."/s"
+		.."\nPower "..Format.compact(numberAttribute("Power")).." · +"..Format.compact(numberAttribute("TrainingGainPerSecond")).."/s training"
+		.."\n"..(if current then "Tier "..tier.." · "..current.DisplayName.." x"..current.Multiplier else "Loading trainer…")
+		.."\nPet training x"..Format.compact(numberAttribute("ActivePetTrainingMultiplier"))
+		.."\n"..(if nextTier and current then "Next: "..nextTier.DisplayName.." x"..nextTier.Multiplier.." · "..Format.compact(nextTier.Price or 0).." Cash" else "Maximum trainer tier")
+		.."\n"..textAttribute("StatusMessage")
+	trainButton.Text=if active then "STOP TRAINING" else "START · approach your trainer"
+	upgradeButton.Text=if displayedTarget then "BUY NEXT TRAINER" else "MAX TIER"
+	upgradeButton.Active=displayedTarget~=nil
+end
+trainButton.Activated:Connect(function() trainingRemote:FireServer(if player:GetAttribute("TrainingActive") then "Stop" else "Start") end)
+upgradeButton.Activated:Connect(function() if displayedTarget then trainingRemote:FireServer("Upgrade",displayedTarget) end end)
+trainingRemote.OnClientEvent:Connect(function(action) if action=="Shop" then economyPanel.Visible=true refreshEconomy() end end)
+player.AttributeChanged:Connect(refreshEconomy)
+refreshEconomy()

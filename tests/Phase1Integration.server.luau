@@ -12,6 +12,7 @@ local Shared=game.ReplicatedStorage.Shared
 local PlayerData=require(Shared.PlayerData)
 local Resources=require(Shared.ResourceDefinitions)
 local Trainers=require(Shared.TrainerDefinitions)
+local Economy=require(Shared.EconomyCalculator)
 local player,original,frame,checks=nil,nil,nil,0
 local originalStatus=Data.getStatus
 local function check(value,message) assert(value,message) checks+=1 end
@@ -44,15 +45,17 @@ local ok,failure=xpcall(function()
 	task.wait(0.81) player.Character:PivotTo(station.CFrame+Vector3.new(100,5,0))
 	check(not Training.train(player,base,station),"Remote-distance training rejected")
 	task.wait(0.81) go(station) local before=data.Power
-	local expected=Trainers.legacyGain(data.BaseUpgrades.TrainingLevel,Monster.getMultiplier(player))
+	local expected=Economy.training(data.TrainerTier,Monster.getMultiplier(player),data.BaseUpgrades.TrainingLevel)
 	check(Training.train(player,base,station),"Valid training accepted")
+	task.wait(1.1) Training.stop(player)
 	check(data.Power==before+expected,"Server calculated training gain")
-	check(not Training.train(player,base,station) and data.Power==before+expected,"Training spam cannot reward twice")
-	data.Cash=0 check(not Training.upgrade(player,base,station),"Insufficient Cash rejected")
-	task.wait(0.26) data.Cash=1000 local level=data.BaseUpgrades.TrainingLevel local cost=Trainers.legacyCost(level)
-	check(Training.upgrade(player,base,station),"Valid upgrade accepted")
-	check(data.Cash==1000-cost and data.BaseUpgrades.TrainingLevel==level+1,"Server calculated upgrade debit")
-	check(not Training.upgrade(player,base,station) and data.Cash==1000-cost,"Upgrade spam cannot debit twice")
+	Training.train(player,base,station)
+	check(not Training.train(player,base,station) and data.Power==before+expected,"Training spam cannot reward twice") Training.stop(player)
+	data.Cash=0 check(not Training.upgrade(player,base,station,data.TrainerTier+1),"Insufficient Cash rejected")
+	task.wait(0.26) data.Cash=1000 local tier=data.TrainerTier local cost=Trainers.getOrdered()[tier+1].Price
+	check(Training.upgrade(player,base,station,tier+1),"Valid upgrade accepted")
+	check(data.Cash==1000-cost and data.TrainerTier==tier+1,"Server calculated upgrade debit")
+	check(not Training.upgrade(player,base,station,tier+1) and data.Cash==1000-cost,"Upgrade spam cannot debit twice")
 	local id,record,part=selectPickup()
 	data.Power=Resources.get(record.ResourceId).PowerRequired
 	player.Character:PivotTo(part.CFrame+Vector3.new(100,5,0))
@@ -94,6 +97,7 @@ local ok,failure=xpcall(function()
 	check(player:GetAttribute("AssignedBaseName")==base.Name and base:GetAttribute("OwnerUserId")==player.UserId,"Respawn keeps one base assignment")
 end,debug.traceback)
 Data.getStatus=originalStatus
+if player then Training.stop(player) end
 if player and Data.get(player) and original then
 	local data=Data.get(player) for key in data do data[key]=nil end for key,value in original do data[key]=value end
 	Monster.publish(player)

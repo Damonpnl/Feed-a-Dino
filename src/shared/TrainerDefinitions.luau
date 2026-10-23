@@ -1,5 +1,5 @@
 --!strict
--- Locked multiplier ladder. Prices/initial ownership/migration are still unspecified.
+-- Locked multiplier ladder. Phase 5A prices are explicitly PROVISIONAL_BALANCE.
 local Trainers = {}
 export type TrainerDefinition = {Id: string, DisplayName: string, Tier: number, Rarity: string, Multiplier: number, Price: number?, Purchasable: boolean}
 local ordered: {TrainerDefinition} = {
@@ -15,6 +15,12 @@ local ordered: {TrainerDefinition} = {
 	{Id="DivineReactor",DisplayName="Divine Reactor",Tier=10,Rarity="Divine",Multiplier=2000,Purchasable=false},
 }
 local byId: {[string]: TrainerDefinition} = {}
+local provisionalPrices = {0,25,100,250,500,1000,2000,4000,8000,16000}
+Trainers.PriceStatus = "PROVISIONAL_BALANCE"
+for index,definition in ordered do
+	definition.Price=provisionalPrices[index]
+	definition.Purchasable=index>1
+end
 for _, definition in ordered do assert(not byId[definition.Id], "Duplicate trainer ID") byId[definition.Id] = definition end
 function Trainers.get(id: string): TrainerDefinition? return byId[id] end
 function Trainers.getOrdered(): {TrainerDefinition} return ordered end
