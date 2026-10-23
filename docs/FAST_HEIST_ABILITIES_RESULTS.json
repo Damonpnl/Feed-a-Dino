@@ -1,0 +1,6 @@
+{
+  "Progress": "Jungle hit",
+  "Rows": "[{\"Warning\":1,\"Active\":1,\"ObservedLeapHeight\":0,\"Dodged\":false,\"Hit\":true,\"Area\":\"Grasslands\"},{\"Warning\":1,\"Active\":1,\"ObservedLeapHeight\":0,\"Dodged\":true,\"Hit\":false,\"Area\":\"Grasslands\"},{\"Warning\":1,\"Active\":0.65,\"ObservedLeapHeight\":0,\"Dodged\":false,\"Hit\":true,\"Area\":\"Swamp\"},{\"Warning\":1,\"Active\":0.65,\"ObservedLeapHeight\":0,\"Dodged\":true,\"Hit\":false,\"Area\":\"Swamp\"}]",
+  "Result": "ServerScriptService.FastHeistAbilities:8: Jungle creates visible warning\nServerScriptService.FastHeistAbilities:8\nServerScriptService.FastHeistAbilities:11\n",
+  "PassedChecks": 28
+}

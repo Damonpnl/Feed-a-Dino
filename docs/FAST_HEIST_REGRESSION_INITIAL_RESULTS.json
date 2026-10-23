@@ -1,0 +1,22 @@
+{
+  "Progress": "Phase3IntegrationHeistRegression",
+  "Result": "STOPPED: Phase3Integration",
+  "Results": [
+    {
+      "PassedChecks": 46,
+      "Result": "PASS",
+      "Name": "Phase5BIntegration"
+    },
+    {
+      "PassedChecks": 32,
+      "Result": "PASS",
+      "Name": "Phase1Integration"
+    },
+    {
+      "Progress": "Grasslands hazard",
+      "Name": "Phase3Integration",
+      "Result": "ServerScriptService.Phase3IntegrationHeistRegression:10: Grasslands pursuit reaches telegraph\nServerScriptService.Phase3IntegrationHeistRegression:10\nServerScriptService.Phase3IntegrationHeistRegression:52\n",
+      "PassedChecks": 20
+    }
+  ]
+}

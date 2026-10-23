@@ -1,0 +1,454 @@
+{
+  "Progress": "FastHeistSlowHeavy",
+  "Result": "PASS",
+  "Results": [
+    {
+      "Name": "FastHeistRadialDodge",
+      "Dodge": true,
+      "Progress": "C2 radial/wide dodge Volcano CharredMeat",
+      "Mode": "C2 radial/wide dodge",
+      "Result": "PASS",
+      "Rows": [
+        {
+          "Seconds": 7.264876999892294,
+          "Resource": "RawMeat",
+          "Power": 0,
+          "PursuitP90": 32.352228240021084,
+          "PursuitP50": 27.67808658613349,
+          "PursuitSamples": 155,
+          "CompletedDodgeMoves": 1,
+          "Attempts": 1,
+          "MinGap": 8.272401809692383,
+          "Outcome": "Escaped",
+          "Position": [
+            434.5460205078125,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 22,
+          "Mode": "C2 radial/wide dodge",
+          "ThreatSeconds": 2.14846510021016,
+          "Area": "Grasslands"
+        },
+        {
+          "Seconds": 10.199421899858862,
+          "Resource": "SmallFish",
+          "Power": 1500,
+          "PursuitP90": 33.45215798784585,
+          "PursuitP50": 28.436614189778158,
+          "PursuitSamples": 154,
+          "CompletedDodgeMoves": 1,
+          "Attempts": 1,
+          "MinGap": 4.972251892089844,
+          "Outcome": "Caught",
+          "Position": [
+            753.5020141601562,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 22.799999237060547,
+          "Mode": "C2 radial/wide dodge",
+          "ThreatSeconds": 1.8834764999337494,
+          "Area": "Swamp"
+        },
+        {
+          "Seconds": 5.266896300017834,
+          "Resource": "WildFruit",
+          "Power": 25000,
+          "PursuitP90": 35.60444399550119,
+          "PursuitP50": 29.85561747536876,
+          "PursuitSamples": 178,
+          "CompletedDodgeMoves": 1,
+          "Attempts": 1,
+          "MinGap": 0,
+          "Outcome": "Hazard",
+          "Position": [
+            1040.495849609375,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 24.84000015258789,
+          "Mode": "C2 radial/wide dodge",
+          "ThreatSeconds": 1.9663096996955574,
+          "Area": "Jungle"
+        },
+        {
+          "Seconds": 11.164812400005758,
+          "Resource": "CrystalShard",
+          "Power": 350000,
+          "PursuitP90": 38.6102941167894,
+          "PursuitP50": 33.20496844311817,
+          "PursuitSamples": 147,
+          "CompletedDodgeMoves": 1,
+          "Attempts": 1,
+          "MinGap": 4.9708356857299805,
+          "Outcome": "Caught",
+          "Position": [
+            1327.489501953125,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 27,
+          "Mode": "C2 radial/wide dodge",
+          "ThreatSeconds": 2.481467599980533,
+          "Area": "CrystalCave"
+        },
+        {
+          "Seconds": 38.397324999794364,
+          "Resource": "CharredMeat",
+          "Power": 6000000,
+          "PursuitP90": 39.2438655354898,
+          "PursuitP50": 33.37359895541551,
+          "PursuitSamples": 563,
+          "CompletedDodgeMoves": 3,
+          "Attempts": 4,
+          "MinGap": 14.804162979125977,
+          "Outcome": "Hazard",
+          "Position": [
+            1614.483154296875,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 28.700000762939453,
+          "Mode": "C2 radial/wide dodge",
+          "ThreatSeconds": 2.2483895998448133,
+          "Area": "Volcano"
+        }
+      ]
+    },
+    {
+      "Name": "FastHeistHighPower",
+      "Result": "PASS",
+      "Progress": "C2 high Power straight Volcano CharredMeat",
+      "Mode": "C2 high Power straight",
+      "PowerOverride": 150000000,
+      "Rows": [
+        {
+          "Seconds": 2.932302499655634,
+          "Resource": "RawMeat",
+          "Power": 150000000,
+          "PursuitP90": 38.56959072614602,
+          "PursuitP50": 36.29922509617233,
+          "PursuitSamples": 133,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 0,
+          "MinGap": 30.886890422961002,
+          "Outcome": "Escaped",
+          "Position": [
+            434.5460205078125,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 52,
+          "Mode": "C2 high Power straight",
+          "ThreatSeconds": -1,
+          "Area": "Grasslands"
+        },
+        {
+          "Seconds": 9.53133049979806,
+          "Resource": "SmallFish",
+          "Power": 150000000,
+          "PursuitP90": 46.16960868953293,
+          "PursuitP50": 41.0397618789661,
+          "PursuitSamples": 532,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 0,
+          "MinGap": 30.886890422961002,
+          "Outcome": "Escaped",
+          "Position": [
+            753.5020141601562,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 49.400001525878906,
+          "Mode": "C2 high Power straight",
+          "ThreatSeconds": -1,
+          "Area": "Swamp"
+        },
+        {
+          "Seconds": 15.83100670017302,
+          "Resource": "WildFruit",
+          "Power": 150000000,
+          "PursuitP90": 50.8045347433488,
+          "PursuitP50": 45.15892224376546,
+          "PursuitSamples": 911,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 0,
+          "MinGap": 30.886890422961002,
+          "Outcome": "Escaped",
+          "Position": [
+            1040.495849609375,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 47.84000015258789,
+          "Mode": "C2 high Power straight",
+          "ThreatSeconds": -1,
+          "Area": "Jungle"
+        },
+        {
+          "Seconds": 22.33150709979236,
+          "Resource": "CrystalShard",
+          "Power": 150000000,
+          "PursuitP90": 52.15556337440564,
+          "PursuitP50": 46.35858075545414,
+          "PursuitSamples": 1297,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 0,
+          "MinGap": 30.886890422961002,
+          "Outcome": "Escaped",
+          "Position": [
+            1327.489501953125,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 46.79999923706055,
+          "Mode": "C2 high Power straight",
+          "ThreatSeconds": -1,
+          "Area": "CrystalCave"
+        },
+        {
+          "Seconds": 31.23142550000921,
+          "Resource": "CharredMeat",
+          "Power": 150000000,
+          "PursuitP90": 48.32964359556322,
+          "PursuitP50": 42.64845721386203,
+          "PursuitSamples": 1835,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 0,
+          "MinGap": 30.886890422961002,
+          "Outcome": "Escaped",
+          "Position": [
+            1614.483154296875,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 42.63999938964844,
+          "Mode": "C2 high Power straight",
+          "ThreatSeconds": -1,
+          "Area": "Volcano"
+        }
+      ]
+    },
+    {
+      "Progress": "C2 precision ordinary/heavy Volcano DragonScale",
+      "Name": "FastHeistSlowHeavy",
+      "Rows": [
+        {
+          "Seconds": 4.798988100141287,
+          "Resource": "RawMeat",
+          "Power": 0,
+          "PursuitP90": 29.230157013216665,
+          "PursuitP50": 25.15728966230962,
+          "PursuitSamples": 156,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 1,
+          "MinGap": 0,
+          "Outcome": "Hazard",
+          "Position": [
+            434.5460205078125,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 16,
+          "Mode": "C2 precision ordinary/heavy",
+          "ThreatSeconds": 1.416935899760574,
+          "Area": "Grasslands"
+        },
+        {
+          "Seconds": 4.433830099646002,
+          "Resource": "PrimalCatalyst",
+          "Power": 1000,
+          "PursuitP90": 26.05757163158612,
+          "PursuitP50": 21.838183869778458,
+          "PursuitSamples": 134,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 1,
+          "MinGap": 2.7860641479492188,
+          "Outcome": "Hazard",
+          "Position": [
+            434.5460205078125,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 13.4399995803833,
+          "Mode": "C2 precision ordinary/heavy",
+          "ThreatSeconds": 1.3659823997877538,
+          "Area": "Grasslands"
+        },
+        {
+          "Seconds": 4.533656999934465,
+          "Resource": "SmallFish",
+          "Power": 1500,
+          "PursuitP90": 30.926772712603324,
+          "PursuitP50": 26.30756417641264,
+          "PursuitSamples": 156,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 1,
+          "MinGap": 0.08837890625,
+          "Outcome": "Hazard",
+          "Position": [
+            753.5020141601562,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 15.199999809265137,
+          "Mode": "C2 precision ordinary/heavy",
+          "ThreatSeconds": 1.1990446001291275,
+          "Area": "Swamp"
+        },
+        {
+          "Seconds": 4.033094400074333,
+          "Resource": "MutantLeech",
+          "Power": 14000,
+          "PursuitP90": 27.544432397808503,
+          "PursuitP50": 22.75605845192225,
+          "PursuitSamples": 123,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 1,
+          "MinGap": 2.1576995849609375,
+          "Outcome": "Hazard",
+          "Position": [
+            753.5020141601562,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 12.800000190734863,
+          "Mode": "C2 precision ordinary/heavy",
+          "ThreatSeconds": 1.1654532998800278,
+          "Area": "Swamp"
+        },
+        {
+          "Seconds": 2.8316170000471175,
+          "Resource": "WildFruit",
+          "Power": 25000,
+          "PursuitP90": 32.737061204353566,
+          "PursuitP50": 28.100216131993648,
+          "PursuitSamples": 131,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 0,
+          "MinGap": 4.882843971252441,
+          "Outcome": "Caught",
+          "Position": [
+            1040.495849609375,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 14.720000267028809,
+          "Mode": "C2 precision ordinary/heavy",
+          "ThreatSeconds": 1.1648295000195503,
+          "Area": "Jungle"
+        },
+        {
+          "Seconds": 4.500153599772602,
+          "Resource": "BeastHeart",
+          "Power": 225000,
+          "PursuitP90": 28.407685102110992,
+          "PursuitP50": 24.132835420971464,
+          "PursuitSamples": 123,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 1,
+          "MinGap": 0,
+          "Outcome": "Hazard",
+          "Position": [
+            1040.495849609375,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 12.15999984741211,
+          "Mode": "C2 precision ordinary/heavy",
+          "ThreatSeconds": 1.1162451999261975,
+          "Area": "Jungle"
+        },
+        {
+          "Seconds": 2.7333068000152707,
+          "Resource": "CrystalShard",
+          "Power": 350000,
+          "PursuitP90": 34.715202295333995,
+          "PursuitP50": 29.1804061959882,
+          "PursuitSamples": 122,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 0,
+          "MinGap": 5.018810272216797,
+          "Outcome": "Caught",
+          "Position": [
+            1327.489501953125,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 14.399999618530273,
+          "Mode": "C2 precision ordinary/heavy",
+          "ThreatSeconds": 1.2155198999680579,
+          "Area": "CrystalCave"
+        },
+        {
+          "Seconds": 4.165987899992615,
+          "Resource": "PrismaticCrystal",
+          "Power": 1500000,
+          "PursuitP90": 29.44307562832654,
+          "PursuitP50": 24.942750504639072,
+          "PursuitSamples": 123,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 1,
+          "MinGap": 0.8950761880126995,
+          "Outcome": "Hazard",
+          "Position": [
+            1327.489501953125,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 11.84000015258789,
+          "Mode": "C2 precision ordinary/heavy",
+          "ThreatSeconds": 1.1666308999992907,
+          "Area": "CrystalCave"
+        },
+        {
+          "Seconds": 2.16736299963668,
+          "Resource": "CharredMeat",
+          "Power": 6000000,
+          "PursuitP90": 37.822488278631546,
+          "PursuitP50": 32.80103483142721,
+          "PursuitSamples": 92,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 0,
+          "MinGap": 4.90180778503418,
+          "Outcome": "Caught",
+          "Position": [
+            1614.483154296875,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 13.119999885559082,
+          "Mode": "C2 precision ordinary/heavy",
+          "ThreatSeconds": 1.0324819996021688,
+          "Area": "Volcano"
+        },
+        {
+          "Seconds": 2.298881399910897,
+          "Resource": "DragonScale",
+          "Power": 18000000,
+          "PursuitP90": 32.52290364329113,
+          "PursuitP50": 28.90670309808645,
+          "PursuitSamples": 99,
+          "CompletedDodgeMoves": 0,
+          "Attempts": 0,
+          "MinGap": 4.940432548522949,
+          "Outcome": "Caught",
+          "Position": [
+            1614.483154296875,
+            -0.23959040641784668,
+            -67.16488647460938
+          ],
+          "Speed": 11.039999961853027,
+          "Mode": "C2 precision ordinary/heavy",
+          "ThreatSeconds": 1.031874599866569,
+          "Area": "Volcano"
+        }
+      ],
+      "SlowMode": true,
+      "Mode": "C2 precision ordinary/heavy",
+      "Result": "PASS",
+      "Heavy": true
+    }
+  ]
+}

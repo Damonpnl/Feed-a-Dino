@@ -1,0 +1,202 @@
+[
+  {
+    "Seconds": 6.898452399997041,
+    "Resource": "RawMeat",
+    "Power": 0,
+    "PursuitP90": 25.890459307380706,
+    "PursuitP50": 22.88099256096636,
+    "PursuitSamples": 362,
+    "Attempts": 0,
+    "MinGap": 30.886890422961002,
+    "Outcome": "Escaped",
+    "Position": [
+      434.5460205078125,
+      -0.23959040641784668,
+      -67.16488647460938
+    ],
+    "Speed": 22,
+    "Mode": "B",
+    "ThreatSeconds": -1,
+    "Area": "Grasslands"
+  },
+  {
+    "Seconds": 7.499752399977297,
+    "Resource": "PrimalCatalyst",
+    "Power": 1000,
+    "PursuitP90": 22.944667255501795,
+    "PursuitP50": 20.00946829884937,
+    "PursuitSamples": 400,
+    "Attempts": 0,
+    "MinGap": 30.886890422961002,
+    "Outcome": "Escaped",
+    "Position": [
+      434.5460205078125,
+      -0.23959040641784668,
+      -67.16488647460938
+    ],
+    "Speed": 20.15999984741211,
+    "Mode": "B",
+    "ThreatSeconds": -1,
+    "Area": "Grasslands"
+  },
+  {
+    "Seconds": 20.629420000128448,
+    "Resource": "SmallFish",
+    "Power": 1500,
+    "PursuitP90": 25.83368969437745,
+    "PursuitP50": 22.766850739049417,
+    "PursuitSamples": 1187,
+    "Attempts": 0,
+    "MinGap": 30.886890422961002,
+    "Outcome": "Escaped",
+    "Position": [
+      753.5020141601562,
+      -0.23959040641784668,
+      -67.16488647460938
+    ],
+    "Speed": 22.799999237060547,
+    "Mode": "B",
+    "ThreatSeconds": -1,
+    "Area": "Swamp"
+  },
+  {
+    "Seconds": 21.795142099959776,
+    "Resource": "MutantLeech",
+    "Power": 14000,
+    "PursuitP90": 24.262596192409042,
+    "PursuitP50": 21.327534593775056,
+    "PursuitSamples": 1256,
+    "Attempts": 0,
+    "MinGap": 30.886890422961002,
+    "Outcome": "Escaped",
+    "Position": [
+      753.5020141601562,
+      -0.23959040641784668,
+      -67.16488647460938
+    ],
+    "Speed": 21.600000381469727,
+    "Mode": "B",
+    "ThreatSeconds": -1,
+    "Area": "Swamp"
+  },
+  {
+    "Seconds": 30.480759599944577,
+    "Resource": "WildFruit",
+    "Power": 25000,
+    "PursuitP90": 27.953926124675956,
+    "PursuitP50": 24.794410236041614,
+    "PursuitSamples": 1778,
+    "Attempts": 0,
+    "MinGap": 30.886890422961002,
+    "Outcome": "Escaped",
+    "Position": [
+      1040.495849609375,
+      -0.23959040641784668,
+      -67.16488647460938
+    ],
+    "Speed": 24.84000015258789,
+    "Mode": "B",
+    "ThreatSeconds": -1,
+    "Area": "Jungle"
+  },
+  {
+    "Seconds": 33.23207799997181,
+    "Resource": "BeastHeart",
+    "Power": 225000,
+    "PursuitP90": 25.137686387000677,
+    "PursuitP50": 22.34246297303798,
+    "PursuitSamples": 1943,
+    "Attempts": 0,
+    "MinGap": 30.886890422961002,
+    "Outcome": "Escaped",
+    "Position": [
+      1040.495849609375,
+      -0.23959040641784668,
+      -67.16488647460938
+    ],
+    "Speed": 22.799999237060547,
+    "Mode": "B",
+    "ThreatSeconds": -1,
+    "Area": "Jungle"
+  },
+  {
+    "Seconds": 38.69697030005045,
+    "Resource": "CrystalShard",
+    "Power": 350000,
+    "PursuitP90": 28.63574454576674,
+    "PursuitP50": 25.45185359323816,
+    "PursuitSamples": 2270,
+    "Attempts": 0,
+    "MinGap": 30.886890422961002,
+    "Outcome": "Escaped",
+    "Position": [
+      1327.489501953125,
+      -0.23959040641784668,
+      -67.16488647460938
+    ],
+    "Speed": 27,
+    "Mode": "B",
+    "ThreatSeconds": -1,
+    "Area": "CrystalCave"
+  },
+  {
+    "Seconds": 40.33004230004735,
+    "Resource": "PrismaticCrystal",
+    "Power": 1500000,
+    "PursuitP90": 24.475649989629773,
+    "PursuitP50": 21.755670304560567,
+    "PursuitSamples": 2368,
+    "Attempts": 0,
+    "MinGap": 30.886890422961002,
+    "Outcome": "Escaped",
+    "Position": [
+      1327.489501953125,
+      -0.23959040641784668,
+      -67.16488647460938
+    ],
+    "Speed": 25.899999618530273,
+    "Mode": "B",
+    "ThreatSeconds": -1,
+    "Area": "CrystalCave"
+  },
+  {
+    "Seconds": 46.397522900020704,
+    "Resource": "CharredMeat",
+    "Power": 6000000,
+    "PursuitP90": 26.53959397003594,
+    "PursuitP50": 23.418914381645216,
+    "PursuitSamples": 2732,
+    "Attempts": 0,
+    "MinGap": 30.886890422961002,
+    "Outcome": "Escaped",
+    "Position": [
+      1614.483154296875,
+      -0.23959040641784668,
+      -67.16488647460938
+    ],
+    "Speed": 28.700000762939453,
+    "Mode": "B",
+    "ThreatSeconds": -1,
+    "Area": "Volcano"
+  },
+  {
+    "Seconds": 47.06249919999391,
+    "Resource": "DragonScale",
+    "Power": 18000000,
+    "PursuitP90": 22.82271781622587,
+    "PursuitP50": 20.286057556312493,
+    "PursuitSamples": 2773,
+    "Attempts": 0,
+    "MinGap": 30.886890422961002,
+    "Outcome": "Escaped",
+    "Position": [
+      1614.483154296875,
+      -0.23959040641784668,
+      -67.16488647460938
+    ],
+    "Speed": 28.290000915527344,
+    "Mode": "B",
+    "ThreatSeconds": -1,
+    "Area": "Volcano"
+  }
+]

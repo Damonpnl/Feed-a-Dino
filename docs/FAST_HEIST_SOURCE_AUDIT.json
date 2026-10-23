@@ -1,0 +1,30 @@
+{
+  "UnitRunnerDisabled": true,
+  "Sources": 120,
+  "Nodes": {
+    "1": {
+      "Count": 5,
+      "Path": "Workspace.ExpeditionZones.Grasslands.ResourceNodes"
+    },
+    "2": {
+      "Count": 5,
+      "Path": "Workspace.ExpeditionZones.Swamp.ResourceNodes"
+    },
+    "3": {
+      "Count": 5,
+      "Path": "Workspace.ExpeditionZones.Jungle.ResourceNodes"
+    },
+    "4": {
+      "Count": 5,
+      "Path": "Workspace.ExpeditionZones.CrystalCave.ResourceNodes"
+    },
+    "5": {
+      "Count": 5,
+      "Path": "Workspace.ExpeditionZones.Volcano.ResourceNodes"
+    }
+  },
+  "Missing": [],
+  "Mismatch": [],
+  "SavedBaseParts": 1412,
+  "Duplicates": []
+}

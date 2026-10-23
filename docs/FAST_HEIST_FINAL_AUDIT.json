@@ -1,0 +1,19 @@
+{
+  "Temporary": [],
+  "Missing": [],
+  "Sources": 120,
+  "Parts": 1412,
+  "RunnerDisabled": true,
+  "Nodes": {
+    "Jungle": 5,
+    "Grasslands": 5,
+    "Volcano": 5,
+    "Swamp": 5,
+    "CrystalCave": 5
+  },
+  "Device": "default",
+  "Mismatches": [],
+  "Duplicates": [],
+  "Date": "2026-10-23",
+  "RojoPort": 34872
+}

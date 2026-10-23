@@ -1,0 +1,168 @@
+{
+  "FastHeistOwnedFixture": true,
+  "Progress": "Phase4BIntegration",
+  "Results": [
+    {
+      "Progress": "Volcano hazard",
+      "Name": "Phase3Integration",
+      "Result": "PASS",
+      "PassedChecks": 129
+    },
+    {
+      "PassedChecks": 13,
+      "Result": "PASS",
+      "Name": "Phase4ACompatibility"
+    },
+    {
+      "PassedChecks": 89,
+      "Result": "PASS",
+      "Name": "Phase4CIntegration"
+    },
+    {
+      "PassedChecks": 18,
+      "Result": "PASS",
+      "Name": "Phase4DIntegration"
+    },
+    {
+      "PassedChecks": 174,
+      "Result": "PASS",
+      "Name": "Phase5AIntegration"
+    },
+    {
+      "PassedChecks": 32,
+      "Result": "PASS",
+      "Name": "Phase1Integration"
+    },
+    {
+      "PassedChecks": 46,
+      "Result": "PASS",
+      "Name": "Phase5BIntegration"
+    },
+    {
+      "PassedChecks": 82,
+      "Name": "FastHeistAbilities",
+      "Progress": "Volcano dodge",
+      "Rows": [
+        {
+          "Hit": true,
+          "Warning": 1,
+          "WarningDistance": 35,
+          "Active": 1,
+          "ObservedLeapHeight": 0,
+          "Dodged": false,
+          "ObservedWarning": 1.0175671577453613,
+          "Area": "Grasslands"
+        },
+        {
+          "Hit": false,
+          "Warning": 1,
+          "WarningDistance": 35,
+          "Active": 1,
+          "ObservedLeapHeight": 0,
+          "Dodged": true,
+          "ObservedWarning": 1.017232894897461,
+          "Area": "Grasslands"
+        },
+        {
+          "Hit": true,
+          "Warning": 1,
+          "WarningDistance": 35,
+          "Active": 0.65,
+          "ObservedLeapHeight": 0,
+          "Dodged": false,
+          "ObservedWarning": 1.0313680171966553,
+          "Area": "Swamp"
+        },
+        {
+          "Hit": false,
+          "Warning": 1,
+          "WarningDistance": 35,
+          "Active": 0.65,
+          "ObservedLeapHeight": 0,
+          "Dodged": true,
+          "ObservedWarning": 1.0154008865356445,
+          "Area": "Swamp"
+        },
+        {
+          "Hit": true,
+          "Warning": 1.25,
+          "WarningDistance": 25,
+          "Active": 1.1,
+          "ObservedLeapHeight": 17.99997615814209,
+          "Dodged": false,
+          "ObservedWarning": 1.2833318710327148,
+          "Area": "Jungle"
+        },
+        {
+          "Hit": false,
+          "Warning": 1.25,
+          "WarningDistance": 25,
+          "Active": 1.1,
+          "ObservedLeapHeight": 17.999979972839355,
+          "Dodged": true,
+          "ObservedWarning": 1.283134937286377,
+          "Area": "Jungle"
+        },
+        {
+          "Hit": true,
+          "Warning": 1.15,
+          "WarningDistance": 35,
+          "Active": 1,
+          "ObservedLeapHeight": 0,
+          "Dodged": false,
+          "ObservedWarning": 1.1828069686889648,
+          "Area": "CrystalCave"
+        },
+        {
+          "Hit": false,
+          "Warning": 1.15,
+          "WarningDistance": 35,
+          "Active": 1,
+          "ObservedLeapHeight": 0,
+          "Dodged": true,
+          "ObservedWarning": 1.1661741733551025,
+          "Area": "CrystalCave"
+        },
+        {
+          "Hit": true,
+          "Warning": 1.25,
+          "WarningDistance": 35,
+          "Active": 1.4,
+          "ObservedLeapHeight": 0,
+          "Dodged": false,
+          "ObservedWarning": 1.2673609256744385,
+          "Area": "Volcano"
+        },
+        {
+          "Hit": false,
+          "Warning": 1.25,
+          "WarningDistance": 35,
+          "Active": 1.4,
+          "ObservedLeapHeight": 0,
+          "Dodged": true,
+          "ObservedWarning": 1.2827789783477783,
+          "Area": "Volcano"
+        }
+      ],
+      "Result": "PASS"
+    },
+    {
+      "PassedChecks": 34,
+      "Name": "Phase4BIntegration",
+      "Result": "PASS",
+      "Progress": "CLICK_MOSSBACK"
+    }
+  ],
+  "Result": "PASS",
+  "Units": {
+    "failed": 0,
+    "run": 403,
+    "passed": 403
+  },
+  "EvolutionClient": {
+    "PassedChecks": 6,
+    "FastHeistOwnedFixture": true,
+    "ReadyForClick": true,
+    "Result": "PASS"
+  }
+}

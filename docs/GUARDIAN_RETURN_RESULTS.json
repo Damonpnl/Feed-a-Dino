@@ -1,0 +1,121 @@
+{
+  "GuardianReturnAbilitiesTest": {
+    "Progress": "Volcano dodge",
+    "Rows": [
+      {
+        "Hit": true,
+        "Warning": 1,
+        "WarningDistance": 35,
+        "Active": 1,
+        "ObservedLeapHeight": 0,
+        "Dodged": false,
+        "ObservedWarning": 1.0171189308166504,
+        "Area": "Grasslands"
+      },
+      {
+        "Hit": false,
+        "Warning": 1,
+        "WarningDistance": 35,
+        "Active": 1,
+        "ObservedLeapHeight": 0,
+        "Dodged": true,
+        "ObservedWarning": 1.0334229469299316,
+        "Area": "Grasslands"
+      },
+      {
+        "Hit": true,
+        "Warning": 1,
+        "WarningDistance": 35,
+        "Active": 0.65,
+        "ObservedLeapHeight": 0,
+        "Dodged": false,
+        "ObservedWarning": 1.0339179039001465,
+        "Area": "Swamp"
+      },
+      {
+        "Hit": false,
+        "Warning": 1,
+        "WarningDistance": 35,
+        "Active": 0.65,
+        "ObservedLeapHeight": 0,
+        "Dodged": true,
+        "ObservedWarning": 1.0175690650939941,
+        "Area": "Swamp"
+      },
+      {
+        "Hit": true,
+        "Warning": 1.25,
+        "WarningDistance": 25,
+        "Active": 1.1,
+        "ObservedLeapHeight": 17.999873161315918,
+        "Dodged": false,
+        "ObservedWarning": 1.282404899597168,
+        "Area": "Jungle"
+      },
+      {
+        "Hit": false,
+        "Warning": 1.25,
+        "WarningDistance": 25,
+        "Active": 1.1,
+        "ObservedLeapHeight": 17.999979972839355,
+        "Dodged": true,
+        "ObservedWarning": 1.28226900100708,
+        "Area": "Jungle"
+      },
+      {
+        "Hit": true,
+        "Warning": 1.15,
+        "WarningDistance": 35,
+        "Active": 1,
+        "ObservedLeapHeight": 0,
+        "Dodged": false,
+        "ObservedWarning": 1.166633129119873,
+        "Area": "CrystalCave"
+      },
+      {
+        "Hit": false,
+        "Warning": 1.15,
+        "WarningDistance": 35,
+        "Active": 1,
+        "ObservedLeapHeight": 0,
+        "Dodged": true,
+        "ObservedWarning": 1.1841108798980713,
+        "Area": "CrystalCave"
+      },
+      {
+        "Hit": true,
+        "Warning": 1.25,
+        "WarningDistance": 35,
+        "Active": 1.4,
+        "ObservedLeapHeight": 0,
+        "Dodged": false,
+        "ObservedWarning": 1.2827470302581787,
+        "Area": "Volcano"
+      },
+      {
+        "Hit": false,
+        "Warning": 1.25,
+        "WarningDistance": 35,
+        "Active": 1.4,
+        "ObservedLeapHeight": 0,
+        "Dodged": true,
+        "ObservedWarning": 1.282585859298706,
+        "Area": "Volcano"
+      }
+    ],
+    "Result": "PASS",
+    "PassedChecks": 87
+  },
+  "GuardianReturnQueue": {
+    "Result": "PASS"
+  },
+  "GuardianReturnResetTest": {
+    "PassedChecks": 61,
+    "Result": "PASS"
+  },
+  "GuardianReturnBodyTest": {
+    "PassedChecks": 10,
+    "Result": "PASS"
+  },
+  "Notes": "Official Studio MCP single-player live-service tests, StudioMemory only. 87 ability checks, 10 body/recovery/manual-drop checks, 61 reset/lifecycle/race checks. No fresh multiplayer or full unit-suite run for this localized change. Studio-only CatchRecovery helper updated to opt into the same return flag; helper UI not separately exercised."
+}

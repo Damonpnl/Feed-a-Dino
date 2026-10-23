@@ -1,0 +1,8 @@
+{
+  "Ok": true,
+  "Result": {
+    "PassedChecks": 20,
+    "Mode": "Two actual clients / StudioMemory",
+    "Result": "PASS"
+  }
+}

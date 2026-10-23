@@ -1,0 +1,118 @@
+{
+  "Dodge": true,
+  "Progress": "C2 committed-window dodge Volcano CharredMeat",
+  "Rows": [
+    {
+      "PursuitP90": 32.099372119552704,
+      "Seconds": 7.26375070028007,
+      "Resource": "RawMeat",
+      "Power": 0,
+      "SurvivedAttacks": 1,
+      "PursuitP50": 27.832318522626835,
+      "PursuitSamples": 155,
+      "CompletedDodgeMoves": 1,
+      "Attempts": 1,
+      "MinGap": 8.346780776977539,
+      "Outcome": "Escaped",
+      "Position": [
+        434.5460205078125,
+        -0.23959040641784668,
+        -67.16488647460938
+      ],
+      "Speed": 22,
+      "Mode": "C2 committed-window dodge",
+      "ThreatSeconds": 2.1475972002372146,
+      "Area": "Grasslands"
+    },
+    {
+      "PursuitP90": 33.6188293896839,
+      "Seconds": 9.999981899745762,
+      "Resource": "SmallFish",
+      "Power": 1500,
+      "SurvivedAttacks": 1,
+      "PursuitP50": 28.341869728541415,
+      "PursuitSamples": 156,
+      "CompletedDodgeMoves": 1,
+      "Attempts": 1,
+      "MinGap": 5.034409523010254,
+      "Outcome": "Caught",
+      "Position": [
+        753.5020141601562,
+        -0.23959040641784668,
+        -67.16488647460938
+      ],
+      "Speed": 22.799999237060547,
+      "Mode": "C2 committed-window dodge",
+      "ThreatSeconds": 1.8495561997406185,
+      "Area": "Swamp"
+    },
+    {
+      "PursuitP90": 36.269010034095764,
+      "Seconds": 7.066360400058329,
+      "Resource": "WildFruit",
+      "Power": 25000,
+      "SurvivedAttacks": 1,
+      "PursuitP50": 30.539914174672177,
+      "PursuitSamples": 181,
+      "CompletedDodgeMoves": 1,
+      "Attempts": 1,
+      "MinGap": 0,
+      "Outcome": "Caught",
+      "Position": [
+        1040.495849609375,
+        -0.23959040641784668,
+        -67.16488647460938
+      ],
+      "Speed": 24.84000015258789,
+      "Mode": "C2 committed-window dodge",
+      "ThreatSeconds": 2.016782899852842,
+      "Area": "Jungle"
+    },
+    {
+      "PursuitP90": 38.59512418392061,
+      "Seconds": 11.297713799867779,
+      "Resource": "CrystalShard",
+      "Power": 350000,
+      "SurvivedAttacks": 1,
+      "PursuitP50": 32.95273493771388,
+      "PursuitSamples": 147,
+      "CompletedDodgeMoves": 1,
+      "Attempts": 1,
+      "MinGap": 4.985970497131348,
+      "Outcome": "Caught",
+      "Position": [
+        1327.489501953125,
+        -0.23959040641784668,
+        -67.16488647460938
+      ],
+      "Speed": 27,
+      "Mode": "C2 committed-window dodge",
+      "ThreatSeconds": 2.4822362000122666,
+      "Area": "CrystalCave"
+    },
+    {
+      "PursuitP90": 39.19060623241439,
+      "Seconds": 38.39544339990243,
+      "Resource": "CharredMeat",
+      "Power": 6000000,
+      "SurvivedAttacks": 3,
+      "PursuitP50": 33.37351001200315,
+      "PursuitSamples": 563,
+      "CompletedDodgeMoves": 3,
+      "Attempts": 4,
+      "MinGap": 14.965232849121094,
+      "Outcome": "Hazard",
+      "Position": [
+        1614.483154296875,
+        -0.23959040641784668,
+        -67.16488647460938
+      ],
+      "Speed": 28.700000762939453,
+      "Mode": "C2 committed-window dodge",
+      "ThreatSeconds": 2.2317237998358905,
+      "Area": "Volcano"
+    }
+  ],
+  "Result": "PASS",
+  "Mode": "C2 committed-window dodge"
+}

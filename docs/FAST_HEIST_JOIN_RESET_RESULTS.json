@@ -1,0 +1,20 @@
+{
+  "Ok": true,
+  "Result": {
+    "Joins": [
+      {
+        "Phase": "Normal",
+        "UserId": -1,
+        "At": 1792789621.413563
+      },
+      {
+        "Phase": "Reset",
+        "UserId": -2,
+        "At": 1792789622.029291
+      }
+    ],
+    "Mode": "Two actual clients; first join triggers real reset",
+    "Result": "PASS",
+    "PassedChecks": 13
+  }
+}

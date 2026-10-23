@@ -1,0 +1,52 @@
+{
+  "Device": "iPhone 17 Pro",
+  "Viewport": "750x381",
+  "ScreenOrientation": "Sensor",
+  "ScreenInsets": "CoreUISafeInsets",
+  "Client": {
+    "Result": "PASS",
+    "Rows": [
+      {
+        "Band": "60",
+        "Text": "60 SECOND WARNING — LEAVE THE FIELD OR LOSE YOUR CARRIED ITEM",
+        "TextFits": true
+      },
+      {
+        "Band": "30",
+        "Text": "30 SECOND WARNING — LEAVE THE FIELD OR LOSE YOUR CARRIED ITEM",
+        "TextFits": true
+      },
+      {
+        "Band": "10",
+        "Text": "FINAL 10 SECONDS — LEAVE THE FIELD OR LOSE YOUR CARRIED ITEM",
+        "TextFits": true
+      },
+      {
+        "Band": "Reset",
+        "Text": "FIELD CLOSED — INSIDE CARRIERS FORFEIT THEIR ITEM",
+        "TextFits": true
+      },
+      {
+        "Band": "Normal",
+        "Text": "60 SECOND WARNING — LEAVE THE FIELD OR LOSE YOUR CARRIED ITEM",
+        "TextFits": true
+      }
+    ]
+  },
+  "Server": {
+    "Progress": 9,
+    "Result": "PASS"
+  },
+  "ScreenshotObservation": "MCP capture FastHeistActualPhoneReset: countdown and full forfeit sentence readable on landscape phone. Warning overlays existing upper-left placeholder pet HUD; 3D world is black in MCP capture, so no 3D visual verification claimed.",
+  "Bounds": {
+    "Position": [
+      30,
+      42
+    ],
+    "Size": [
+      690,
+      42
+    ],
+    "TextFits": true
+  }
+}

@@ -1,0 +1,156 @@
+[
+  {
+    "PassedChecks": 72,
+    "Name": "FastHeistAbilitiesVerified",
+    "Progress": "Volcano dodge",
+    "Rows": [
+      {
+        "Warning": 1,
+        "Active": 1,
+        "ObservedLeapHeight": 0,
+        "Dodged": false,
+        "Hit": true,
+        "Area": "Grasslands"
+      },
+      {
+        "Warning": 1,
+        "Active": 1,
+        "ObservedLeapHeight": 0,
+        "Dodged": true,
+        "Hit": false,
+        "Area": "Grasslands"
+      },
+      {
+        "Warning": 1,
+        "Active": 0.65,
+        "ObservedLeapHeight": 0,
+        "Dodged": false,
+        "Hit": true,
+        "Area": "Swamp"
+      },
+      {
+        "Warning": 1,
+        "Active": 0.65,
+        "ObservedLeapHeight": 0,
+        "Dodged": true,
+        "Hit": false,
+        "Area": "Swamp"
+      },
+      {
+        "Warning": 1.25,
+        "Active": 1.1,
+        "ObservedLeapHeight": 17.999991416931152,
+        "Dodged": false,
+        "Hit": true,
+        "Area": "Jungle"
+      },
+      {
+        "Warning": 1.25,
+        "Active": 1.1,
+        "ObservedLeapHeight": 17.999815940856934,
+        "Dodged": true,
+        "Hit": false,
+        "Area": "Jungle"
+      },
+      {
+        "Warning": 1.15,
+        "Active": 1,
+        "ObservedLeapHeight": 0,
+        "Dodged": false,
+        "Hit": true,
+        "Area": "CrystalCave"
+      },
+      {
+        "Warning": 1.15,
+        "Active": 1,
+        "ObservedLeapHeight": 0,
+        "Dodged": true,
+        "Hit": false,
+        "Area": "CrystalCave"
+      },
+      {
+        "Warning": 1.25,
+        "Active": 1.4,
+        "ObservedLeapHeight": 0,
+        "Dodged": false,
+        "Hit": true,
+        "Area": "Volcano"
+      },
+      {
+        "Warning": 1.25,
+        "Active": 1.4,
+        "ObservedLeapHeight": 0,
+        "Dodged": true,
+        "Hit": false,
+        "Area": "Volcano"
+      }
+    ],
+    "Result": "PASS"
+  },
+  {
+    "PassedChecks": 54,
+    "Result": "PASS",
+    "Name": "FastHeistResetVerified"
+  },
+  {
+    "PassedChecks": 27,
+    "Rows": [
+      {
+        "Seconds": 3.5996942003257573,
+        "Power": 0,
+        "Distance": 78.19830414652824,
+        "Kind": "80StudPhysics",
+        "Configured": 22,
+        "Achieved": 21.72359644867934
+      },
+      {
+        "Seconds": 3.0019165999256074,
+        "Power": 1000,
+        "Distance": 76.69442847371101,
+        "Kind": "80StudPhysics",
+        "Configured": 26,
+        "Achieved": 25.548487414877425
+      },
+      {
+        "Seconds": 2.633841199800372,
+        "Power": 10000,
+        "Distance": 77.23074446618557,
+        "Kind": "80StudPhysics",
+        "Configured": 30,
+        "Achieved": 29.322475657241277
+      },
+      {
+        "Seconds": 1.8327375003136694,
+        "Power": 1000000,
+        "Distance": 76.54626600444317,
+        "Kind": "80StudPhysics",
+        "Configured": 44,
+        "Achieved": 41.76608269942773
+      },
+      {
+        "Seconds": 1.1993730003014207,
+        "Power": 150000000,
+        "Distance": 75.21923969686031,
+        "Kind": "80StudPhysics",
+        "Configured": 72,
+        "Achieved": 62.71546856395514
+      }
+    ],
+    "Result": "PASS",
+    "Name": "FastHeistPhysicsVerified"
+  },
+  {
+    "Rows": {
+      "P95Ms": 0.11540018022060394,
+      "Players": 1,
+      "FrameP95Ms": 18.04424449801445,
+      "Calls": 601,
+      "MaxMs": 0.15580002218484879,
+      "Duration": 10.016656199935824,
+      "P50Ms": 0.08280016481876373,
+      "MeanMs": 0.08692946393482895
+    },
+    "Result": "PASS",
+    "Name": "FastHeistProfileVerified"
+  }
+]
